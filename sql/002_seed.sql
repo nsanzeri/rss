@@ -1,0 +1,6 @@
+-- Optional seed (dev)
+-- Insert your Google OAuth credentials here if you don't want env vars.
+-- INSERT INTO app_secrets (namespace, secret_key, secret_value) VALUES
+-- ('oauth', 'google_client_id', 'YOUR_CLIENT_ID.apps.googleusercontent.com'),
+-- ('oauth', 'google_client_secret', 'YOUR_CLIENT_SECRET')
+-- ON DUPLICATE KEY UPDATE secret_value=VALUES(secret_value);
