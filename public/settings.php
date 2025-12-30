@@ -113,7 +113,7 @@ $currentLocal = (new DateTimeImmutable('now', new DateTimeZone($pageTz)))->forma
 page_header('Settings');
 ?>
 
-<div class="grid" style="gap:1.25rem;">
+<div class="grid settings-wrap" style="gap:1.25rem;">
   <?php if ($flash): ?>
     <div class="alert success"><?= $flash ?></div>
   <?php endif; ?>
@@ -138,7 +138,7 @@ page_header('Settings');
       </div>
 
       <div class="form-field" style="margin-top:1rem;">
-        <label class="form-label">Email (cannot change yet)</label>
+        <label class="form-label">Current Email</label>
         <input class="form-input" type="email" value="<?= h((string)$u['email']) ?>" disabled/>
       </div>
 

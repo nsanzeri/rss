@@ -12,7 +12,6 @@ function page_header(string $title): void {
     $NAV = [
         'Ops' => [
             ['Dashboard', '/dashboard.php', 'home'],
-            ['Settings', '/settings.php', 'settings'],
             ['Calendars', '/manage_calendars.php', 'ics'],
             ['Check Availability', '/check_availability.php', 'core'],
             ['Public Link', '/public_availability.php', 'share'],
@@ -128,6 +127,13 @@ function page_header(string $title): void {
 
         <div class="topbar-right">
           <?php if ($u): ?>
+          <a class="icon-btn" href="<?= h(BASE_URL) ?>/settings.php" title="Settings" aria-label="Settings">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M19.4 15a7.97 7.97 0 0 0 .1-2l2-1.2-2-3.5-2.3.7a8.3 8.3 0 0 0-1.7-1L15 4h-6l-.5 3a8.3 8.3 0 0 0-1.7 1l-2.3-.7-2 3.5 2 1.2a7.97 7.97 0 0 0 .1 2l-2 1.2 2 3.5 2.3-.7a8.3 8.3 0 0 0 1.7 1L9 20h6l.5-3a8.3 8.3 0 0 0 1.7-1l2.3.7 2-3.5-2-1.2Z"
+                      stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+              </svg>
+            </a>
             <span class="muted" style="font-size:0.85rem;"><?= h($u['email']) ?></span>
             <a class="logout-link" href="<?= h(BASE_URL) ?>/logout.php">Logout</a>
           <?php endif; ?>
