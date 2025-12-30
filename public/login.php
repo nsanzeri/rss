@@ -1,9 +1,13 @@
 <?php
-$HIDE_MENU = true;
+$HIDE_NAV = true;
 require_once __DIR__ . "/_layout.php";
 
 $err = null;
 $msg = null;
+
+if (!empty($_GET['deleted']) && $_GET['deleted'] === '1') {
+    $msg = "Account deleted.";
+}
 
 if (!empty($_GET['reset']) && $_GET['reset'] === '1') {
     $msg = "Password updated. You can log in now.";

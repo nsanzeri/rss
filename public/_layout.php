@@ -6,11 +6,13 @@ function page_header(string $title): void {
     $u = auth_user();
     // Pages like login/forgot/reset can set $HIDE_NAV = true before including _layout.php
     // to render a minimal shell without the top navigation.
-    $hideMenu = !empty($GLOBALS['HIDE_MENU']) || !empty($GLOBALS['HIDE_NAV']);
-// Single-source nav model (desktop dropdown + mobile accordion)
+    $hideNav = !empty($GLOBALS['HIDE_NAV']);
+
+    // Single-source nav model (desktop dropdown + mobile accordion)
     $NAV = [
         'Ops' => [
             ['Dashboard', '/dashboard.php', 'home'],
+            ['Settings', '/settings.php', 'settings'],
             ['Calendars', '/manage_calendars.php', 'ics'],
             ['Check Availability', '/check_availability.php', 'core'],
             ['Public Link', '/public_availability.php', 'share'],
@@ -57,7 +59,10 @@ function page_header(string $title): void {
     </head>
     <body>
 
-    <?php if (!$hideMenu): ?>
+    <?php if ($hideNav): ?>
+    <div class="app-shell">
+      <main class="content" style="padding-top:2.5rem;">
+    <?php else: ?>
     <!-- Mobile menu panel (opens below header; no internal header) -->
     <div class="mobile-drawer" id="mobileDrawer" aria-hidden="true">
       <div class="mobile-drawer__backdrop" data-drawer-close></div>
@@ -81,8 +86,6 @@ function page_header(string $title): void {
         </div>
       </div>
     </div>
-<?php endif; ?>
-
     <div class="app-shell">
         <div class="shell">
   <div>
@@ -105,15 +108,12 @@ function page_header(string $title): void {
           </a>
 
           <!-- Mobile: burger to the RIGHT of emblem; becomes X + Close when open -->
-          <?php if (!$hideMenu): ?>
           <button class="nav-toggle" type="button" aria-label="Menu" data-drawer-toggle>
             <span class="nav-ico" aria-hidden="true">☰</span>
             <span class="nav-text">Menu</span>
           </button>
-          <?php endif; ?>
         </div>
 
-        <?php if (!$hideMenu): ?>
         <nav class="modulebar" aria-label="Suite">
           <?php foreach ($NAV as $module => $items):
             $isActive = ($module === $activeModule);
@@ -125,7 +125,6 @@ function page_header(string $title): void {
             </a>
           <?php endforeach; ?>
         </nav>
-        <?php endif; ?>
 
         <div class="topbar-right">
           <?php if ($u): ?>
@@ -136,7 +135,6 @@ function page_header(string $title): void {
       </div>
 
       <!-- Row 3: sub-items aligned under the module start -->
-      <?php if (!$hideMenu): ?>
       <div class="topbar-row topbar-row--sub">
         <div class="topbar-left topbar-left--spacer" aria-hidden="true">
           <span class="logo-mark"><span class="logo-mark-inner"></span></span>
@@ -169,14 +167,18 @@ function page_header(string $title): void {
 function page_footer(): void {
     ?>
         </main>
+        <?php if (!empty($GLOBALS['HIDE_NAV'])): ?>
+          </div>
+        <?php else: ?>
         <footer class="footer">
             <div class="footer-inner">
                 <span>© <?= date('Y') ?> Ready Set Shows</span>
                 <span class="muted">Ops • v1</span>
             </div>
         </footer>
+  </div>
 </div>
-</div>
+        <?php endif; ?>
     <script src="<?= h(BASE_URL) ?>/assets/js/app.js"></script>
     </body>
     </html>

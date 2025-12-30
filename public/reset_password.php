@@ -1,5 +1,5 @@
 <?php
-$HIDE_MENU = true;
+$HIDE_NAV = true;
 require_once __DIR__ . '/_layout.php';
 
 $token = (string)($_GET['token'] ?? ($_POST['token'] ?? ''));

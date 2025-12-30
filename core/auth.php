@@ -5,7 +5,7 @@ function auth_user(): ?array {
     if ($cache !== null) return $cache;
 
     $pdo = db();
-    $stmt = $pdo->prepare("SELECT id, email, display_name, timezone, created_at FROM users WHERE id=? LIMIT 1");
+    $stmt = $pdo->prepare("SELECT id, email, display_name, timezone, created_at FROM users WHERE id=? AND deleted_at IS NULL LIMIT 1");
     $stmt->execute([$_SESSION['user_id']]);
     $cache = $stmt->fetch() ?: null;
     return $cache;
@@ -13,7 +13,7 @@ function auth_user(): ?array {
 
 function auth_login_password(string $email, string $password): array {
     $pdo = db();
-    $stmt = $pdo->prepare("SELECT id, email, password_hash FROM users WHERE email=? LIMIT 1");
+    $stmt = $pdo->prepare("SELECT id, email, password_hash FROM users WHERE email=? AND deleted_at IS NULL LIMIT 1");
     $stmt->execute([$email]);
     $u = $stmt->fetch();
     if (!$u || empty($u['password_hash']) || !password_verify($password, $u['password_hash'])) {
