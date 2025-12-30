@@ -1,8 +1,13 @@
 <?php
-$HIDE_NAV = true;
+$HIDE_MENU = true;
 require_once __DIR__ . "/_layout.php";
 
 $err = null;
+$msg = null;
+
+if (!empty($_GET['reset']) && $_GET['reset'] === '1') {
+    $msg = "Password updated. You can log in now.";
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_validate($_POST['csrf'] ?? null)) {
@@ -18,6 +23,7 @@ page_header("Log in");
 ?>
 <div class="card">
   <div class="card-body">
+    <?php if ($msg): ?><div class="alert success"><?= h($msg) ?></div><?php endif; ?>
     <?php if ($err): ?><div class="alert"><?= h($err) ?></div><?php endif; ?>
     
     <div class="card form-card">
@@ -45,6 +51,9 @@ page_header("Log in");
           <label class="form-label" for="password">Password</label>
           <input class="form-input" id="password" name="password" type="password" required autocomplete="current-password"
                  placeholder="••••••••"/>
+          <div style="margin-top:.5rem;">
+            <a href="<?= h(BASE_URL) ?>/forgot_password.php" style="font-size:.9rem;">Forgot password?</a>
+          </div>
         </div>
 
         <div class="auth-actions">

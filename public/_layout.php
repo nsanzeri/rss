@@ -4,8 +4,10 @@ $user = auth_user();
 
 function page_header(string $title): void {
     $u = auth_user();
-
-    // Single-source nav model (desktop dropdown + mobile accordion)
+    // Pages like login/forgot/reset can set $HIDE_NAV = true before including _layout.php
+    // to render a minimal shell without the top navigation.
+    $hideMenu = !empty($GLOBALS['HIDE_MENU']) || !empty($GLOBALS['HIDE_NAV']);
+// Single-source nav model (desktop dropdown + mobile accordion)
     $NAV = [
         'Ops' => [
             ['Dashboard', '/dashboard.php', 'home'],
@@ -54,6 +56,8 @@ function page_header(string $title): void {
         <script>const BASE_URL = <?= json_encode(BASE_URL) ?>;</script>
     </head>
     <body>
+
+    <?php if (!$hideMenu): ?>
     <!-- Mobile menu panel (opens below header; no internal header) -->
     <div class="mobile-drawer" id="mobileDrawer" aria-hidden="true">
       <div class="mobile-drawer__backdrop" data-drawer-close></div>
@@ -77,6 +81,8 @@ function page_header(string $title): void {
         </div>
       </div>
     </div>
+<?php endif; ?>
+
     <div class="app-shell">
         <div class="shell">
   <div>
@@ -99,12 +105,15 @@ function page_header(string $title): void {
           </a>
 
           <!-- Mobile: burger to the RIGHT of emblem; becomes X + Close when open -->
+          <?php if (!$hideMenu): ?>
           <button class="nav-toggle" type="button" aria-label="Menu" data-drawer-toggle>
             <span class="nav-ico" aria-hidden="true">☰</span>
             <span class="nav-text">Menu</span>
           </button>
+          <?php endif; ?>
         </div>
 
+        <?php if (!$hideMenu): ?>
         <nav class="modulebar" aria-label="Suite">
           <?php foreach ($NAV as $module => $items):
             $isActive = ($module === $activeModule);
@@ -116,6 +125,7 @@ function page_header(string $title): void {
             </a>
           <?php endforeach; ?>
         </nav>
+        <?php endif; ?>
 
         <div class="topbar-right">
           <?php if ($u): ?>
@@ -126,6 +136,7 @@ function page_header(string $title): void {
       </div>
 
       <!-- Row 3: sub-items aligned under the module start -->
+      <?php if (!$hideMenu): ?>
       <div class="topbar-row topbar-row--sub">
         <div class="topbar-left topbar-left--spacer" aria-hidden="true">
           <span class="logo-mark"><span class="logo-mark-inner"></span></span>
@@ -151,6 +162,7 @@ function page_header(string $title): void {
             <div class="page-head">
               <h1 class="page-title"><?= h($title) ?></h1>
             </div>
+    <?php endif; ?>
     <?php
 }
 
@@ -163,7 +175,7 @@ function page_footer(): void {
                 <span class="muted">Ops • v1</span>
             </div>
         </footer>
-  </div>
+</div>
 </div>
     <script src="<?= h(BASE_URL) ?>/assets/js/app.js"></script>
     </body>

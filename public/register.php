@@ -1,4 +1,5 @@
 <?php
+$HIDE_MENU = true;
 require_once __DIR__ . "/_layout.php";
 
 $err = null;

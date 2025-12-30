@@ -39,7 +39,7 @@ if (getenv('RSS_BASE_URL')) {
 } else {
     if (APP_ENV === 'local') {
         // <-- CHANGE THIS if your local path differs
-        $baseUrl = "http://localhost:8080/readysetshows/public";
+        $baseUrl = "http://localhost:8080/rss/public";
     } else {
         // <-- CHANGE THIS to your real production public path
         // e.g. https://readysetshows.com/ops/public

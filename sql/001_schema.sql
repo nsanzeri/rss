@@ -121,3 +121,6 @@ CREATE TABLE IF NOT EXISTS calendar_events (
     FOREIGN KEY (calendar_id) REFERENCES user_calendars(id)
     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+
