@@ -113,17 +113,23 @@ function page_header(string $title): void {
           </button>
         </div>
 
-        <nav class="modulebar" aria-label="Suite">
-          <?php foreach ($NAV as $module => $items):
-            $isActive = ($module === $activeModule);
-            $firstPath = $items[0][1] ?? '#';
-            $href = ($firstPath === '#') ? 'javascript:void(0)' : (BASE_URL . $firstPath);
-          ?>
-            <a class="module-link <?= $isActive ? 'active' : '' ?>" href="<?= h($href) ?>">
-              <?= h($module) ?>
-            </a>
-          <?php endforeach; ?>
-        </nav>
+		<nav class="modulebar" aria-label="Suite">
+		  <?php foreach ($NAV as $module => $items):
+		    $isActive = ($module === $activeModule);
+		    $firstPath = $items[0][1] ?? '#';
+		    $href = ($firstPath === '#') ? 'javascript:void(0)' : (BASE_URL . $firstPath);
+		  ?>
+		    <a class="module-link <?= $isActive ? 'active' : '' ?>" href="<?= h($href) ?>">
+		      <?= h($module) ?>
+		    </a>
+		  <?php endforeach; ?>
+		
+		  <!-- Pricing (intentionally styled differently; not a module) -->
+		  <a class="module-link module-link--pricing" href="<?= h(BASE_URL) ?>/pricing.php">
+		    Pricing
+		  </a>
+		</nav>
+
 
         <div class="topbar-right">
           <?php if ($u): ?>

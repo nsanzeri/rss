@@ -42,13 +42,14 @@ if (getenv('RSS_BASE_URL')) {
         $baseUrl = "http://localhost:8080/rss/public";
     } else {
         // <-- CHANGE THIS to your real production public path
-        // e.g. https://readysetshows.com/ops/public
+        // e.g. https://readysetshows.com/public
         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "https";
         $baseUrl = $scheme . "://" . $host;
         // If production lives in a subfolder, append it:
         // $baseUrl .= "/ops/public";
     }
 }
+define('APP_ROOT', __DIR__ ); // if config.php is in rss/
 define("BASE_URL", $baseUrl);
 
 // ===============================

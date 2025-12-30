@@ -376,3 +376,36 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+DROP TABLE IF EXISTS `subscription_limits`;
+CREATE TABLE subscription_limits (
+  tier VARCHAR(32) NOT NULL PRIMARY KEY,   -- free, solo, team, venue, pro
+  display_name VARCHAR(64) NOT NULL,       -- Backstage Pass, Headliner Solo, etc
+
+  users_per_account INT NOT NULL DEFAULT 1,
+  calendars_total INT NOT NULL DEFAULT 1,
+  calendar_import_sources INT NOT NULL DEFAULT 0,
+  public_links INT NOT NULL DEFAULT 1,
+
+  entities_total INT NOT NULL DEFAULT 1,   -- total managed org objects
+  venues_managed INT NOT NULL DEFAULT 0,
+  bands_managed INT NOT NULL DEFAULT 0,
+
+  staff_delegation TINYINT(1) NOT NULL DEFAULT 0,  -- can invite staff to manage?
+  roles_enabled TINYINT(1) NOT NULL DEFAULT 0,     -- admin/member etc
+  embeds_enabled TINYINT(1) NOT NULL DEFAULT 0,    -- embed calendars
+  reporting_level INT NOT NULL DEFAULT 0,          -- 0 none, 1 basic, 2 advanced
+  priority_placement TINYINT(1) NOT NULL DEFAULT 0,
+
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO subscription_limits
+(tier, display_name, users_per_account, calendars_total, calendar_import_sources, public_links, entities_total, venues_managed, bands_managed, staff_delegation, roles_enabled, embeds_enabled, reporting_level, priority_placement)
+VALUES
+('free',  'Backstage Pass', 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0),
+('solo',  'Headliner Solo', 1, 3, 2, 3, 2, 0, 1, 0, 0, 0, 1, 0),
+('team',  'Headliner Crew', 6, 8, 4, 8, 4, 0, 3, 1, 1, 0, 1, 0),
+('venue', 'House Booker',   10, 20, 6, 20, 10, 5, 2, 1, 1, 1, 1, 0),
+('pro',   'Circuit Pro',    50, 200, 20, 200, 100, 50, 50, 1, 1, 1, 2, 1);
