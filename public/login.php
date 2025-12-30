@@ -25,52 +25,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 page_header("Log in");
 ?>
-<div class="card">
-  <div class="card-body">
-    <?php if ($msg): ?><div class="alert success"><?= h($msg) ?></div><?php endif; ?>
-    <?php if ($err): ?><div class="alert"><?= h($err) ?></div><?php endif; ?>
-    
-    <div class="card form-card">
-      <div class="card-header" style="display:flex; align-items:flex-start; justify-content:space-between; gap:1rem;">
-        <div>
-          <div class="card-title">Log in</div>
-          <div class="card-subtitle">Welcome back. Let’s get your availability show‑ready.</div>
-        </div>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <?php if ($msg): ?><div class="alert success" style="margin-bottom:12px;"><?= h($msg) ?></div><?php endif; ?>
+    <?php if ($err): ?><div class="alert error" style="margin-bottom:12px;"><?= h($err) ?></div><?php endif; ?>
+
+    <h2 class="auth-title">Log in to Ready Set Shows</h2>
+
+    <div class="provider-stack" aria-label="Continue with">
+      <a class="provider-btn" href="<?= h(BASE_URL) ?>/google_login.php">
+        <span class="provider-ico" aria-hidden="true">G</span>
+        <span>Continue with Google</span>
+      </a>
+      <a class="provider-btn disabled" href="javascript:void(0)" aria-disabled="true" tabindex="-1">
+        <span class="provider-ico" aria-hidden="true"></span>
+        <span>Continue with Apple</span>
+      </a>
+      <a class="provider-btn disabled" href="javascript:void(0)" aria-disabled="true" tabindex="-1">
+        <span class="provider-ico" aria-hidden="true">f</span>
+        <span>Continue with Facebook</span>
+      </a>
+    </div>
+
+    <div class="auth-divider"><span>or</span></div>
+
+    <form method="post" class="auth-form">
+      <input type="hidden" name="csrf" value="<?= h(csrf_token()) ?>"/>
+
+      <div class="form-field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required autocomplete="email"
+               placeholder="Email" value="<?= h($_POST['email'] ?? '') ?>"/>
       </div>
 
-      <?php if ($err): ?>
-        <div class="alert error" style="margin-top: 1rem;"><?= h($err) ?></div>
-      <?php endif; ?>
+      <div class="form-field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" required autocomplete="current-password"
+               placeholder="Password"/>
+      </div>
 
-      <form method="post" class="auth-form" style="margin-top: 1rem;">
-        <input type="hidden" name="csrf" value="<?= h(csrf_token()) ?>"/>
+      <button class="btn primary btn-lg auth-submit" type="submit">Log In</button>
 
-        <div class="form-field">
-          <label class="form-label" for="email">Email</label>
-          <input class="form-input" id="email" name="email" type="email" required autocomplete="email"
-                 placeholder="you@domain.com" value="<?= h($_POST['email'] ?? '') ?>"/>
-        </div>
-
-        <div class="form-field">
-          <label class="form-label" for="password">Password</label>
-          <input class="form-input" id="password" name="password" type="password" required autocomplete="current-password"
-                 placeholder="••••••••"/>
-          <div style="margin-top:.5rem;">
-            <a href="<?= h(BASE_URL) ?>/forgot_password.php" style="font-size:.9rem;">Forgot password?</a>
-          </div>
-        </div>
-
-        <div class="auth-actions">
-          <button class="btn btn-lg btn-primary" type="submit">Log in</button>
-          <a class="btn btn-lg btn-secondary" href="<?= h(BASE_URL) ?>/google_login.php">Continue with Google</a>
-        </div>
-
-        <div class="auth-switch">
-          New here? <a href="<?= h(BASE_URL) ?>/register.php">Create an account</a>
-        </div>
-      </form>
-    </div>
-    
+      <div class="auth-links">
+        <a href="<?= h(BASE_URL) ?>/forgot_password.php">Forgot Password</a>
+        <span class="muted">·</span>
+        <a href="<?= h(BASE_URL) ?>/register.php">Create an account</a>
+      </div>
+    </form>
   </div>
 </div>
 <?php page_footer(); ?>
