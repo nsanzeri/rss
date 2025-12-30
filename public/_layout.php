@@ -9,14 +9,19 @@ function page_header(string $title): void {
     $hideNav = !empty($GLOBALS['HIDE_NAV']);
 
     // Single-source nav model (desktop dropdown + mobile accordion)
+    $opsItems = [
+        ['Dashboard', '/dashboard.php', 'home'],
+        ['Calendars', '/manage_calendars.php', 'ics'],
+        ['Check Availability', '/check_availability.php', 'core'],
+        ['Public Link', '/public_availability.php', 'share'],
+    ];
+    // Only admins/super users see Metrics.
+    if (function_exists('is_admin_user') && is_admin_user($u)) {
+        $opsItems[] = ['Metrics', '/metrics.php', 'stats'];
+    }
+
     $NAV = [
-        'Ops' => [
-            ['Dashboard', '/dashboard.php', 'home'],
-            ['Calendars', '/manage_calendars.php', 'ics'],
-            ['Check Availability', '/check_availability.php', 'core'],
-            ['Public Link', '/public_availability.php', 'share'],
-            ['Metrics', '/metrics.php', 'stats'],
-        ],
+        'Ops' => $opsItems,
         'Shows' => [
             ['Shows (soon)', '#', 'soon'],
         ],
