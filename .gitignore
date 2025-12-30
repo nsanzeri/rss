@@ -1,0 +1,10 @@
+.env
+/vendor/
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.settings/
+.buildpath
+.project

@@ -1,4 +1,5 @@
 <?php
+$HIDE_NAV = true;
 require_once __DIR__ . "/_layout.php";
 
 $err = null;

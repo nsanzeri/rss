@@ -1,4 +1,5 @@
 <?php
+error_log("RUNNING: " . __FILE__ . " mtime=" . @filemtime(__FILE__));
 // Lightweight ICS parser for v1.
 // Supports:
 // - DTSTART/DTEND (date-time or all-day VALUE=DATE)
