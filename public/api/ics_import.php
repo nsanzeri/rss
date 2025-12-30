@@ -48,6 +48,16 @@ if (($cal['source_type'] ?? '') !== 'ics') {
     exit;
 }
 
+// Metrics: record that an import was initiated.
+if (function_exists('track_event')) {
+    track_event('calendar_import_started', [
+        'calendar_id' => $calId,
+        'mode' => $mode,
+        'delete_in_range' => $deleteInRange ? 1 : 0,
+        'selected_count' => is_array($events) ? count($events) : 0,
+    ], $u['id'] ?? null);
+}
+
 // Determine the delete window in UTC if requested.
 $fromUtc = null;
 $toUtc   = null;
@@ -142,6 +152,15 @@ try {
 
     $pdo->commit();
 
+    if (function_exists('track_event')) {
+        track_event('calendar_import_completed', [
+            'calendar_id' => $calId,
+            'mode' => $mode,
+            'delete_in_range' => $deleteInRange ? 1 : 0,
+            'imported_count' => $count,
+        ], $u['id'] ?? null);
+    }
+
     $msg = $deleteInRange
         ? "Imported {$count} event(s) and replaced existing imports in the selected range."
         : "Imported {$count} event(s).";
@@ -150,5 +169,13 @@ try {
 
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
+    if (function_exists('track_event')) {
+        track_event('calendar_import_failed', [
+            'calendar_id' => $calId,
+            'mode' => $mode,
+            'delete_in_range' => $deleteInRange ? 1 : 0,
+            'error' => $e->getMessage(),
+        ], $u['id'] ?? null);
+    }
     echo json_encode(['success' => false, 'error' => 'Import failed: ' . $e->getMessage()]);
 }

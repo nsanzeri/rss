@@ -15,6 +15,7 @@ function page_header(string $title): void {
             ['Calendars', '/manage_calendars.php', 'ics'],
             ['Check Availability', '/check_availability.php', 'core'],
             ['Public Link', '/public_availability.php', 'share'],
+            ['Metrics', '/metrics.php', 'stats'],
         ],
         'Shows' => [
             ['Shows (soon)', '#', 'soon'],
@@ -44,6 +45,17 @@ function page_header(string $title): void {
                 break 2;
             }
         }
+    }
+
+    // Metrics: capture page views early so dashboards have real history.
+    // Safe by design (track_event swallows DB/table errors).
+    if (function_exists('track_event')) {
+        track_event('page_view', [
+            'title' => $title,
+            'module' => $activeModule,
+            'file' => $file,
+            'hide_nav' => $hideNav ? 1 : 0,
+        ], $u['id'] ?? null);
     }
     ?>
     <!doctype html>

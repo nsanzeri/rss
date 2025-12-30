@@ -409,3 +409,17 @@ VALUES
 ('team',  'Headliner Crew', 6, 8, 4, 8, 4, 0, 3, 1, 1, 0, 1, 0),
 ('venue', 'House Booker',   10, 20, 6, 20, 10, 5, 2, 1, 1, 1, 1, 0),
 ('pro',   'Circuit Pro',    50, 200, 20, 200, 100, 50, 50, 1, 1, 1, 2, 1);
+
+CREATE TABLE IF NOT EXISTS `events` (
+  `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT(20) UNSIGNED NULL,
+  `event_name` VARCHAR(64) NOT NULL,
+  `path` VARCHAR(255) NULL,
+  `meta_json` LONGTEXT NULL,
+  `ip` VARCHAR(45) NULL,
+  `user_agent` VARCHAR(255) NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_events_user_created` (`user_id`, `created_at`),
+  KEY `idx_events_name_created` (`event_name`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

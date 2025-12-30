@@ -256,6 +256,20 @@ if ($didSubmit && !$err) {
           $outLines[] = "• " . pretty_day($d, $userTz);
         }
       }
+
+      // Metrics: capture successful availability checks (for future dashboards).
+      if (function_exists('track_event')) {
+        track_event('availability_checked', [
+          'start_date' => $rangeStartLocal->format('Y-m-d'),
+          'end_date' => $rangeEndLocal->format('Y-m-d'),
+          'days' => array_keys($daySet),
+          'calendar_ids' => array_map(fn($c) => (int)$c['id'], $selected),
+          'calendar_count' => count($selected),
+          'timezone' => $tzName,
+          'free_count' => count($freeExportDates),
+          'busy_day_count' => count($busyDates),
+        ], $u['id'] ?? null);
+      }
     } catch (Throwable $e) {
       $err = "Error: " . $e->getMessage();
     }

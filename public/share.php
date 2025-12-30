@@ -69,6 +69,17 @@ while ($cur <= $endDt) {
     $cur = $cur->modify('+1 day');
 }
 
+// Metrics: attribute public link views to the owner (not the anonymous visitor).
+if (function_exists('track_event')) {
+    track_event('public_availability_viewed', [
+        'owner_user_id' => (int)$user['id'],
+        'start_date' => $startDt->format('Y-m-d'),
+        'end_date' => $endDt->format('Y-m-d'),
+        'days' => array_values($days),
+        'available_count' => count($avail),
+    ], (int)$user['id']);
+}
+
 $titleName = $user['display_name'] ?: "Availability";
 page_header($titleName);
 ?>

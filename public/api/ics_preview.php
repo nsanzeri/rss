@@ -108,6 +108,20 @@ try {
         }
     }
 
+    // Metrics: preview helps us measure import usage before we build dashboards.
+    if (function_exists('track_event')) {
+        track_event('calendar_import_preview', [
+            'calendar_id' => $calId,
+            'mode' => $mode,
+            'start_date' => $startDate ?: null,
+            'end_date' => $endDate ?: null,
+            'effective_start' => $fromLocal->format('Y-m-d'),
+            'effective_end' => $toLocal->modify('-1 day')->format('Y-m-d'),
+            'event_count' => count($events),
+            'truncated' => (count($events) >= $maxOut) ? 1 : 0,
+        ], $u['id'] ?? null);
+    }
+
     echo json_encode([
         'success' => true,
         'effective_range' => [
@@ -121,5 +135,12 @@ try {
     ]);
 
 } catch (Throwable $e) {
+    if (function_exists('track_event')) {
+        track_event('calendar_import_preview_failed', [
+            'calendar_id' => $calId,
+            'mode' => $mode,
+            'error' => $e->getMessage(),
+        ], $u['id'] ?? null);
+    }
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
