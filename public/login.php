@@ -31,7 +31,8 @@ page_header("Log in");
     <?php if ($msg): ?><div class="alert success" style="margin-bottom:12px;"><?= h($msg) ?></div><?php endif; ?>
     <?php if ($err): ?><div class="alert error" style="margin-bottom:12px;"><?= h($err) ?></div><?php endif; ?>
 
-    <h2 class="auth-title">Log in to Ready Set Shows</h2>
+    <div class="auth-brand">READY SET SHOWS</div>
+    <h2 class="auth-title">Log in</h2>
 
     <div class="provider-stack" aria-label="Continue with">
       <a class="provider-btn" href="<?= h(BASE_URL) ?>/google_login.php">

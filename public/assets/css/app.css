@@ -41,7 +41,9 @@ a{ color: inherit; }
 /* ------------------------------
    Base controls
 ------------------------------ */
-input, select, textarea{
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea{
   width: 100%;
   font: inherit;
   color: var(--text);
@@ -51,7 +53,20 @@ input, select, textarea{
   padding: 10px 12px;
   outline: none;
 }
-input:focus, select:focus, textarea:focus{
+
+
+/* Checkboxes (no forced width) */
+input[type="checkbox"],
+input[type="radio"]{
+  width: auto;
+  height: auto;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus{
   border-color: rgba(124,58,237,0.55);
   box-shadow: 0 0 0 4px rgba(124,58,237,0.12);
 }
@@ -119,7 +134,11 @@ button{ font: inherit; }
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow);
+  padding: 20px;
 }
+
+/* Use when a card needs edge-to-edge content */
+.card--flush{ padding: 0; }
 
 .grid{ display:grid; gap: 14px; }
 
@@ -140,6 +159,15 @@ button{ font: inherit; }
   border-radius: var(--r-lg);
   box-shadow: var(--shadow);
   padding: 34px 28px;
+}
+
+.auth-brand{
+  text-align:center;
+  font-weight: 900;
+  letter-spacing: -.06em;
+  text-transform: uppercase;
+  font-size: 28px;
+  margin: 0 0 8px;
 }
 .auth-title{ margin: 0 0 18px; font-size: 22px; letter-spacing: -0.02em; text-align:center; }
 
@@ -208,9 +236,9 @@ button{ font: inherit; }
 }
 .brand-center{
   font-weight: 800;
-  letter-spacing: .14em;
+  letter-spacing: -.05em;
   text-transform: uppercase;
-  font-size: 12px;
+  font-size: 27px;
   color: #fff;
 }
 
@@ -317,7 +345,7 @@ th{ font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: va
   justify-content:space-between;
 }
 .landing-brand{ display:flex; align-items:center; gap: 12px; }
-.landing-brand h1{ margin:0; color:#fff; font-size: 28px; letter-spacing: .02em; }
+.landing-brand h1{ margin:0; color:#fff; font-size: 28px; letter-spacing: -.05em; }
 .landing-nav{ display:flex; align-items:center; gap: 14px; flex-wrap:wrap; }
 .landing-nav a{ color: rgba(255,255,255,0.85); text-decoration:none; font-weight:650; font-size: 13px; }
 .landing-nav a:hover{ color:#fff; }

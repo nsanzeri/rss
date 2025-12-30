@@ -1,6 +1,8 @@
 <?php
 // pricing.php
 require_once __DIR__ . "/_layout.php";
+// Hide the app nav when viewing pricing as a public/anonymous visitor
+$HIDE_NAV = empty($_SESSION["user_id"]);
 page_header('Pricing');
 
 // Fetch user + current plan (NO billing logic — just display)
