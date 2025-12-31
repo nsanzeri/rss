@@ -31,7 +31,6 @@ page_header("Log in");
     <?php if ($msg): ?><div class="alert success" style="margin-bottom:12px;"><?= h($msg) ?></div><?php endif; ?>
     <?php if ($err): ?><div class="alert error" style="margin-bottom:12px;"><?= h($err) ?></div><?php endif; ?>
 
-    <div class="auth-brand">READY SET SHOWS</div>
     <h2 class="auth-title">Log in</h2>
 
     <div class="provider-stack" aria-label="Continue with">
@@ -39,14 +38,14 @@ page_header("Log in");
         <span class="provider-ico" aria-hidden="true">G</span>
         <span>Continue with Google</span>
       </a>
-      <a class="provider-btn disabled" href="javascript:void(0)" aria-disabled="true" tabindex="-1">
+      <!-- a class="provider-btn disabled" href="javascript:void(0)" aria-disabled="true" tabindex="-1">
         <span class="provider-ico" aria-hidden="true"></span>
         <span>Continue with Apple</span>
       </a>
       <a class="provider-btn disabled" href="javascript:void(0)" aria-disabled="true" tabindex="-1">
         <span class="provider-ico" aria-hidden="true">f</span>
         <span>Continue with Facebook</span>
-      </a>
+      </a-->
     </div>
 
     <div class="auth-divider"><span>or</span></div>
