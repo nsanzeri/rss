@@ -102,8 +102,11 @@ function page_header(string $title): void {
         </div>
       </div>
     </div>
+   <?php endif; ?>
     <div class="app-shell">
+        
         <div class="shell">
+        
   <div>
     <header class="topbar">
       <!-- Row 1: centered product title (VERY TOP LINE) -->
@@ -177,20 +180,13 @@ function page_header(string $title): void {
       <?php endif; ?>
     </header>
 
-        <main class="content">
-            <div class="page-head">
-              <h1 class="page-title"><?= h($title) ?></h1>
-            </div>
-    <?php endif; ?>
+  
     <?php
 }
 
 function page_footer(): void {
     ?>
         </main>
-        <?php if (!empty($GLOBALS['HIDE_NAV'])): ?>
-          </div>
-        <?php else: ?>
         <footer class="footer">
             <div class="footer-inner">
                 <span>© <?= date('Y') ?> Ready Set Shows</span>
@@ -199,7 +195,6 @@ function page_footer(): void {
         </footer>
   </div>
 </div>
-        <?php endif; ?>
     <script src="<?= h(BASE_URL) ?>/assets/js/app.js"></script>
     </body>
     </html>

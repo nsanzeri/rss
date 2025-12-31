@@ -21,7 +21,22 @@ page_header("Create account");
     <?php if ($err): ?><div class="alert"><?= h($err) ?></div><?php endif; ?>
     
     <h2 class="auth-title">Create account</h2>
+  <div class="provider-stack" aria-label="Continue with">
+      <a class="provider-btn" href="<?= h(BASE_URL) ?>/google_login.php">
+        <span class="provider-ico" aria-hidden="true">G</span>
+        <span>Continue with Google</span>
+      </a>
+      <!-- a class="provider-btn disabled" href="javascript:void(0)" aria-disabled="true" tabindex="-1">
+        <span class="provider-ico" aria-hidden="true"></span>
+        <span>Continue with Apple</span>
+      </a>
+      <a class="provider-btn disabled" href="javascript:void(0)" aria-disabled="true" tabindex="-1">
+        <span class="provider-ico" aria-hidden="true">f</span>
+        <span>Continue with Facebook</span>
+      </a-->
+    </div>
 
+    <div class="auth-divider"><span>or</span></div>
     <form method="post" class="auth-form">
       <input type="hidden" name="csrf" value="<?= h(csrf_token()) ?>"/>
 
