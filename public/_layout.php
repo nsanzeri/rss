@@ -111,16 +111,12 @@ function page_header(string $title): void {
         <div class="brand-center" aria-label="Ready Set Shows">Ready Set Shows</div>
       </div>
 
+      <?php if (!$hideNav): ?>
       <!-- Row 2: emblem + main modules + user/logout -->
       <div class="topbar-row topbar-row--primary">
         <div class="topbar-left">
           <a class="topbar-emblem" href="<?= h(BASE_URL) ?>/dashboard.php" aria-label="Ready Set Shows">
-            <span class="logo-mark" aria-hidden="true">
-              <span class="logo-mark-inner">
-                <span class="logo-bolt"></span>
-                <span class="logo-ring"></span>
-              </span>
-            </span>
+            <span class="rss-logo" aria-hidden="true">RSS</span>
           </a>
 
           <!-- Mobile: burger to the RIGHT of emblem; becomes X + Close when open -->
@@ -165,12 +161,7 @@ function page_header(string $title): void {
 
       <!-- Row 3: sub-items aligned under the module start -->
       <div class="topbar-row topbar-row--sub">
-        <div class="topbar-left topbar-left--spacer" aria-hidden="true">
-          <span class="logo-mark"><span class="logo-mark-inner"></span></span>
-          <span class="nav-toggle" style="visibility:hidden">
-            <span class="nav-ico">☰</span><span class="nav-text">Menu</span>
-          </span>
-        </div>
+        <div class="topbar-left topbar-left--spacer" aria-hidden="true"></div>
         <nav class="subbar" aria-label="Section">
           <?php foreach (($NAV[$activeModule] ?? []) as [$label, $path, $tag]):
             $href = ($path === '#') ? 'javascript:void(0)' : (BASE_URL . $path);
@@ -183,6 +174,7 @@ function page_header(string $title): void {
           <?php endforeach; ?>
         </nav>
       </div>
+      <?php endif; ?>
     </header>
 
         <main class="content">

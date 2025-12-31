@@ -242,9 +242,15 @@ button{ font: inherit; }
   color: #fff;
 }
 
-.topbar-row--primary{ justify-content:space-between; padding-top: 8px; padding-bottom: 12px; }
+.topbar-row--primary{ justify-content:flex-start; padding-top: 8px; padding-bottom: 12px; }
 .topbar-left{ display:flex; align-items:center; gap: 10px; }
+.topbar-left--spacer{ width: 46px; }
+
 .topbar-emblem{ display:inline-flex; align-items:center; text-decoration:none; }
+
+/* New square RSS logo */
+.rss-logo{ width: 36px; height: 36px; border-radius: 10px; background: var(--accent); color: #fff; display:inline-flex; align-items:center; justify-content:center; font-weight: 900; letter-spacing: .08em; font-size: 13px; }
+
 
 /* Replace neon logo with clean dot emblem while keeping markup */
 .logo-mark{ width: 36px; height: 36px; border-radius: 999px; background: var(--accent); box-shadow: none; display:inline-flex; align-items:center; justify-content:center; }
@@ -279,7 +285,7 @@ button{ font: inherit; }
 }
 .module-link--pricing:hover{ background: transparent; border-color: transparent; color: var(--text); }
 
-.topbar-right{ display:flex; align-items:center; gap: 10px; }
+.topbar-right{ margin-left:auto; display:flex; align-items:center; gap: 10px; }
 .logout-link{ text-decoration:none; font-weight: 650; color: var(--accent-2); }
 
 .topbar-row--sub{ border-top: 1px solid var(--border); background: rgba(255,255,255,0.65); }
