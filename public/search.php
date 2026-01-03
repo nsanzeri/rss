@@ -1,0 +1,239 @@
+<?php
+require_once __DIR__ . "/../core/bootstrap.php";
+
+// Public search results page (Discovery v1)
+$q = trim($_GET['q'] ?? '');
+$where = trim($_GET['where'] ?? '');
+$when = trim($_GET['when'] ?? '');
+$radius = (int)($_GET['radius'] ?? 25);
+$type = trim($_GET['type'] ?? 'all');
+
+$allowed_radii = [5,10,25,50,100];
+if (!in_array($radius, $allowed_radii, true)) { $radius = 25; }
+
+$allowed_types = ['all','band','venue'];
+if (!in_array($type, $allowed_types, true)) { $type = 'all'; }
+
+$search_error = '';
+$search_results = [];
+$search_location_label = '';
+
+// Require a ZIP to run the geo search
+$zip = '';
+if ($where !== '' && preg_match('/(\d{5})/', $where, $mm)) {
+  $zip = $mm[1];
+} elseif ($where !== '') {
+  $search_error = "Enter a 5-digit ZIP code to search nearby.";
+}
+
+if ($zip !== '' && !$search_error) {
+  try {
+    $pdo = db();
+
+    // Cache-first ZIP lookup
+    $origin = geo_zip_lookup($zip, $pdo);
+    if (!$origin) {
+      $search_error = "We don’t recognize ZIP <strong>" . h($zip) . "</strong> yet. (Seed data is included; import it to enable search.)";
+    } else {
+      $olat = (float)$origin['lat'];
+      $olng = (float)$origin['lng'];
+      $search_location_label = trim((string)($origin['city'] ?? '') . ", " . (string)($origin['state'] ?? '') . " " . (string)($origin['zip'] ?? $zip));
+
+      // Bounding-box pre-filter (fast)
+      $box = geo_bounding_box($olat, $olng, $radius);
+
+      $sql = "
+        SELECT
+          p.id,
+          p.profile_type,
+          p.name,
+          p.city,
+          p.state,
+          p.zip,
+          p.genres,
+          p.bio,
+          p.website,
+          (
+            3959 * ACOS(
+              COS(RADIANS(:olat)) * COS(RADIANS(z.lat)) *
+              COS(RADIANS(z.lng) - RADIANS(:olng)) +
+              SIN(RADIANS(:olat)) * SIN(RADIANS(z.lat))
+            )
+          ) AS distance_miles
+        FROM profiles p
+        JOIN zipcodes z ON z.zip = p.zip
+        WHERE p.is_active = 1
+          AND z.lat BETWEEN :min_lat AND :max_lat
+          AND z.lng BETWEEN :min_lng AND :max_lng
+      ";
+
+      $params = [
+        ':olat' => $olat,
+        ':olng' => $olng,
+        ':min_lat' => $box['min_lat'],
+        ':max_lat' => $box['max_lat'],
+        ':min_lng' => $box['min_lng'],
+        ':max_lng' => $box['max_lng'],
+        ':radius' => $radius,
+      ];
+
+      if ($type !== 'all') {
+        $sql .= " AND p.profile_type = :ptype ";
+        $params[':ptype'] = $type;
+      }
+
+      if ($q !== '') {
+        $sql .= " AND (p.name LIKE :q OR p.genres LIKE :q OR p.city LIKE :q) ";
+        $params[':q'] = '%' . $q . '%';
+      }
+
+      // NOTE: No busy_dates table in this build yet, so we don't filter by $when.
+
+      $sql .= " HAVING distance_miles <= :radius ORDER BY distance_miles ASC, p.name ASC LIMIT 60 ";
+
+      $stmt = $pdo->prepare($sql);
+      foreach ($params as $k => $v) { $stmt->bindValue($k, $v); }
+      $stmt->execute();
+      $search_results = $stmt->fetchAll();
+    }
+  } catch (Throwable $e) {
+    $search_error = "Search isn’t available yet (database not connected).";
+  }
+}
+
+$title = "Search — Ready Set Shows";
+?><!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><?= h($title) ?></title>
+  <link rel="stylesheet" href="<?= h(BASE_URL) ?>/assets/css/app.css" />
+</head>
+<body class="public search-page">
+
+  <header class="site-header">
+    <div class="brandbar">
+      <div class="brandbar-inner">
+        <a href="<?= h(BASE_URL) ?>/index.php" class="brand">
+          <span class="logo-square">RSS</span>
+          <span class="brand-name">Ready Set Shows</span>
+        </a>
+        <nav class="top-actions">
+          <a class="pill" href="<?= h(BASE_URL) ?>/pricing.php">Pricing</a>
+          <a class="pill" href="<?= h(BASE_URL) ?>/login.php">Log In</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" style="max-width: 1160px; margin: 18px auto; padding: 0 16px;">
+
+    <section class="search-shell">
+      <form class="search-filters" method="get" action="<?= h(BASE_URL) ?>/search.php">
+        <div class="sf-row">
+          <div class="sf-field">
+            <label>When</label>
+            <input name="when" placeholder="Any date" value="<?= h($when) ?>" />
+          </div>
+          <div class="sf-field">
+            <label>Where</label>
+            <input name="where" placeholder="ZIP" value="<?= h($where) ?>" />
+          </div>
+          <div class="sf-field">
+            <label>Radius</label>
+            <select name="radius">
+              <?php foreach ([5,10,25,50,100] as $r): ?>
+                <option value="<?= (int)$r ?>" <?= $radius===$r ? 'selected' : '' ?>><?= (int)$r ?> mi</option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="sf-field">
+            <label>Type</label>
+            <select name="type">
+              <option value="all" <?= $type==='all' ? 'selected' : '' ?>>All</option>
+              <option value="band" <?= $type==='band' ? 'selected' : '' ?>>Bands</option>
+              <option value="venue" <?= $type==='venue' ? 'selected' : '' ?>>Venues</option>
+            </select>
+          </div>
+          <div class="sf-field sf-grow">
+            <label>What</label>
+            <input name="q" placeholder="Band, venue, genre…" value="<?= h($q) ?>" />
+          </div>
+          <button class="sf-btn" type="submit">Search</button>
+        </div>
+      </form>
+
+      <div class="search-meta">
+        <?php if ($zip !== '' && !$search_error): ?>
+          <div class="search-title">
+            <h1><?= count($search_results) ?> photo-shoot spaces near <?= h($search_location_label ?: $zip) ?></h1>
+            <div class="muted">Discovery v1 results within <?= (int)$radius ?> miles<?php if ($type !== 'all'): ?> • <?= h(ucfirst($type)) ?>s<?php endif; ?><?php if ($q !== ''): ?> • “<?= h($q) ?>”<?php endif; ?><?php if ($when !== ''): ?> • Date filter coming soon<?php endif; ?></div>
+          </div>
+        <?php else: ?>
+          <div class="search-title">
+            <h1>Search</h1>
+            <div class="muted">Enter a ZIP to see nearby bands and venues.</div>
+          </div>
+        <?php endif; ?>
+      </div>
+
+      <?php if ($search_error): ?>
+        <div class="alert" style="margin-top: 12px;"><?= $search_error ?></div>
+      <?php endif; ?>
+
+      <?php if ($zip !== '' && !$search_error): ?>
+        <?php if (empty($search_results)): ?>
+          <div class="results-empty" style="margin-top: 14px;">No results yet. Try a bigger radius, or search a nearby ZIP.</div>
+        <?php else: ?>
+          <div class="listing-grid">
+            <?php foreach ($search_results as $row): ?>
+              <?php
+                $name = (string)($row['name'] ?? '');
+                $initials = '';
+                foreach (preg_split('/\s+/', trim($name)) as $part) {
+                  if ($part !== '') $initials .= strtoupper(substr($part, 0, 1));
+                  if (strlen($initials) >= 2) break;
+                }
+                if ($initials === '') $initials = 'RS';
+              ?>
+              <article class="listing-card">
+                <a class="listing-photo" href="<?= h(BASE_URL) ?>/profile.php?id=<?= (int)$row['id'] ?>&where=<?= rawurlencode($where) ?>&when=<?= rawurlencode($when) ?>">
+                  <div class="listing-badge"><?= ucfirst(h((string)$row['profile_type'])) ?></div>
+                  <div class="listing-heart" aria-hidden="true">♡</div>
+                  <div class="listing-initials"><?= h($initials) ?></div>
+                </a>
+                <div class="listing-body">
+                  <div class="listing-name">
+                    <a href="<?= h(BASE_URL) ?>/profile.php?id=<?= (int)$row['id'] ?>&where=<?= rawurlencode($where) ?>&when=<?= rawurlencode($when) ?>"><?= h($name) ?></a>
+                  </div>
+                  <div class="listing-sub">
+                    <?= h(trim(($row['city'] ?? '') . ", " . ($row['state'] ?? '') . " " . ($row['zip'] ?? ''))) ?>
+                    <span class="dot">•</span>
+                    <?= number_format((float)$row['distance_miles'], 1) ?> mi
+                  </div>
+                  <?php if (!empty($row['genres'])): ?>
+                    <div class="listing-tags"><?= h((string)$row['genres']) ?></div>
+                  <?php endif; ?>
+                  <?php if (!empty($row['bio'])): ?>
+                    <div class="listing-desc"><?= h((string)$row['bio']) ?></div>
+                  <?php endif; ?>
+                  <div class="listing-actions">
+                    <a class="pill small" href="<?= h(BASE_URL) ?>/profile.php?id=<?= (int)$row['id'] ?>&where=<?= rawurlencode($where) ?>&when=<?= rawurlencode($when) ?>">View</a>
+                    <?php if (!empty($row['website'])): ?>
+                      <a class="pill small" href="<?= h((string)$row['website']) ?>" target="_blank" rel="noopener">Website</a>
+                    <?php endif; ?>
+                  </div>
+                </div>
+              </article>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+      <?php endif; ?>
+
+      <?= geonames_attribution_html() ?>
+    </section>
+  </main>
+
+</body>
+</html>

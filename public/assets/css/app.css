@@ -626,4 +626,133 @@ th{ font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: va
   font-size: 14px;
 }
 
+/* GeoNames attribution (required) */
+.geo-attrib{
+  max-width: 1100px;
+  margin: 16px auto 28px;
+  padding: 0 16px;
+  color: rgba(15,23,42,0.60);
+  font-size: 12px;
+}
+.geo-attrib a{ color: inherit; text-decoration: underline; }
+
+/* ------------------------------
+   Search results page (Peerspace-ish grid)
+------------------------------ */
+.search-page{
+  background: radial-gradient(1200px 600px at 20% 10%, rgba(124,58,237,0.10), transparent 60%),
+              radial-gradient(900px 600px at 80% 30%, rgba(2,132,199,0.09), transparent 60%),
+              linear-gradient(180deg, #fff 0%, #f7f8fb 100%);
+  min-height: 100vh;
+}
+
+.filters-bar{
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255,255,255,0.86);
+  border-bottom: 1px solid rgba(15,23,42,0.10);
+  backdrop-filter: blur(10px);
+}
+
+.filters-inner{
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  display:flex;
+  flex-wrap:wrap;
+  gap: 10px;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.filters-left{ display:flex; align-items:center; gap: 10px; flex-wrap:wrap; }
+.filters-right{ display:flex; align-items:center; gap: 10px; flex-wrap:wrap; }
+
+.chip{
+  display:inline-flex;
+  align-items:center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(15,23,42,0.12);
+  background: rgba(15,23,42,0.03);
+  font-size: 13px;
+  color: rgba(15,23,42,0.82);
+  white-space: nowrap;
+}
+
+.listing-grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+@media (max-width: 1000px){
+  .listing-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px){
+  .listing-grid{ grid-template-columns: 1fr; }
+}
+
+.listing-card{
+  background:#fff;
+  border: 1px solid rgba(15,23,42,0.10);
+  border-radius: 18px;
+  overflow:hidden;
+  box-shadow: 0 18px 60px rgba(2,6,23,0.06);
+}
+
+.listing-photo{
+  height: 160px;
+  background: radial-gradient(600px 220px at 20% 30%, rgba(124,58,237,0.30), transparent 60%),
+              radial-gradient(520px 220px at 80% 50%, rgba(2,132,199,0.22), transparent 60%),
+              linear-gradient(135deg, #0b1020 0%, #111827 100%);
+  position: relative;
+}
+
+.listing-photo .favorite{
+  position:absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.80);
+  border: 1px solid rgba(15,23,42,0.10);
+  color: rgba(15,23,42,0.70);
+  font-size: 16px;
+}
+
+.listing-photo .pilltag{
+  position:absolute;
+  left: 10px;
+  top: 10px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.88);
+  border: 1px solid rgba(15,23,42,0.10);
+  font-size: 12px;
+  color: rgba(15,23,42,0.78);
+}
+
+.listing-body{ padding: 14px; }
+.listing-title{ font-weight: 760; letter-spacing: -0.01em; }
+.listing-sub{ margin-top: 6px; color: rgba(15,23,42,0.70); font-size: 13px; }
+.listing-sub .dot{ margin: 0 6px; opacity: .6; }
+.listing-tags{ margin-top: 8px; color: rgba(15,23,42,0.78); font-size: 13px; }
+.listing-desc{
+  margin-top: 8px;
+  color: rgba(15,23,42,0.76);
+  font-size: 13px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.listing-actions{ margin-top: 12px; display:flex; gap: 8px; flex-wrap:wrap; }
+
 .logo-square{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:rgba(124,58,237,1);color:#fff;font-weight:800;font-size:13px;letter-spacing:0.08em;}

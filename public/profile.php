@@ -91,7 +91,7 @@ $title = $profile ? ($profile['name'] ?? 'Profile') : "Profile";
                   . "Thanks!"
                 );
               ?>
-              <a class="pill" href="<?= h(BASE_URL) ?>/index.php?where=<?= rawurlencode($where ?: ($profile['zip'] ?? '')) ?>&radius=25&type=all">Search nearby</a>
+              <a class="pill" href="<?= h(BASE_URL) ?>/search.php?where=<?= rawurlencode($where ?: ($profile['zip'] ?? '')) ?>&radius=25&type=all">Search nearby</a>
               <a class="pill" href="mailto:?subject=<?= $subject ?>&body=<?= $body ?>">Request booking</a>
               <?php if (!empty($profile['website'])): ?>
                 <a class="pill" href="<?= h($profile['website']) ?>" target="_blank" rel="noopener">Website</a>
@@ -118,5 +118,7 @@ $title = $profile ? ($profile['name'] ?? 'Profile') : "Profile";
       </div>
     <?php endif; ?>
   </main>
+
+  <?= geonames_attribution_html() ?>
 </body>
 </html>
