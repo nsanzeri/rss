@@ -9,31 +9,44 @@ function page_header(string $title): void {
     $hideNav = !empty($GLOBALS['HIDE_NAV']);
 
     // Single-source nav model (desktop dropdown + mobile accordion)
-    $opsItems = [
-        ['Dashboard', '/dashboard.php', 'home'],
-        ['Calendars', '/manage_calendars.php', 'ics'],
-        ['Check Availability', '/check_availability.php', 'core'],
-        ['Public Link', '/public_availability.php', 'share'],
+    $dbItems = [
+   		['Overview', '/dashboard.php', 'overview'],
+   		['Calendars', '/manage_calendars.php', 'tools'],
+   		['Metrics', '/metrics.php', 'admin'],
     ];
+
+    $bookingItems = [
+    		['Pipeline', '/bookings.php', 'booking'],
+    		['Inquiries', '/bookings.php?tab=inquiries', 'booking'],
+    		['Pending', '/bookings.php?tab=pending', 'booking'],
+    		['Confirmed', '/bookings.php?tab=confirmed', 'booking'],
+    ];
+    
+    $toolsItems = [
+    		['Bands in Town', '/tools.php', 'tools'],
+    		['Check Availability', '/check_availability.php', 'tools'],
+    		['Pretty Print', '/print.php', 'tools'],
+    		['Social Help', '/social.php', 'tools'],
+    		['Other Tools', '/tools.php', 'tools'],
+    ];
+    
+    
+    $profilesItems = [
+    		['My Profiles', '/profiles.php', 'profile'],
+    		['Create Profile', '/profiles.php?new=1', 'profile'],
+    		['Settings', '/settings.php', 'profile'],
+    ];
+    
     // Only admins/super users see Metrics.
     if (function_exists('is_admin_user') && is_admin_user($u)) {
         $opsItems[] = ['Metrics', '/metrics.php', 'stats'];
     }
 
     $NAV = [
-        'Ops' => $opsItems,
-        'Shows' => [
-            ['Shows (soon)', '#', 'soon'],
-        ],
-        'Finance' => [
-            ['Finance (soon)', '#', 'soon'],
-        ],
-        'Social' => [
-            ['Social (soon)', '#', 'soon'],
-        ],
-        'Connect' => [
-            ['Connect (soon)', '#', 'soon'],
-        ],
+        'Dashboard' => $dbItems,
+   		'Bookings' => $bookingItems,
+        'Tools' => $toolsItems,
+        'Profiles' => $profilesItems,
     ];
 
     // Active route → highlight module + sub-item (desktop two-row nav)
