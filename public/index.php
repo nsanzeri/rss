@@ -65,7 +65,7 @@ if ($where !== '' || $q !== '' || $when !== '') {
   <main>
     <section class="hero" id="top">
       <div class="hero-kicker">Go somewhere fun — or bring the fun to you</div>
-      <h2 class="hero-title">Find live music. Find venues. Share dates.</h2>
+      <h2 class="hero-title">Discover live music, book entertainment, and manage your shows — all in one place.</h2>
       <p class="hero-sub">Search what’s happening, then follow the trail. If you’re a band or venue, listing takes minutes.</p>
 
       <div class="search-rail">
