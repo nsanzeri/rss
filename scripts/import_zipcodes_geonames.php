@@ -72,7 +72,20 @@ if (!file_exists($txt)) {
 $pdo = db();
 
 // Ensure table exists
-$pdo->exec(file_get_contents(__DIR__ . '/../sql/create_zipcodes.sql'));
+// Ensure zipcodes table exists (inline, no external file dependency)
+$createSql = <<<SQL
+CREATE TABLE IF NOT EXISTS zipcodes (
+  zip CHAR(5) NOT NULL PRIMARY KEY,
+  city VARCHAR(128) NULL,
+  state CHAR(2) NULL,
+  lat DECIMAL(10,7) NOT NULL,
+  lng DECIMAL(10,7) NOT NULL,
+  INDEX idx_lat (lat),
+  INDEX idx_lng (lng)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL;
+
+$pdo->exec($createSql);
 
 // Import
 $insert = $pdo->prepare(
