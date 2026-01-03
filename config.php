@@ -66,3 +66,5 @@ define("RSS_GOOGLE_CLIENT_SECRET", getenv("RSS_GOOGLE_CLIENT_SECRET") ?: "");
 
 // Always derived from BASE_URL to prevent mismatch
 define("GOOGLE_REDIRECT_URI", BASE_URL . "/google_callback.php");
+// echo("GOOGLE_REDIRECT_URI=" . GOOGLE_REDIRECT_URI);
+// echo("\nBASE_URL=" . $baseUrl);
