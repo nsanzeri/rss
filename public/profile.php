@@ -4,16 +4,16 @@ require_once __DIR__ . "/../core/bootstrap.php";
 // Public profile page (Discovery v1)
 $id = (int)($_GET['id'] ?? 0);
 if ($id <= 0) {
-  header("Location: " . BASE_URL . "/index.php");
-  exit;
+	header("Location: " . BASE_URL . "/index.php");
+	exit;
 }
 
 $profile = null;
 $error = '';
 
 try {
-  $pdo = db();
-  $stmt = $pdo->prepare("
+	$pdo = db();
+	$stmt = $pdo->prepare("
     SELECT
       p.*,
       z.lat AS zip_lat,
@@ -25,14 +25,36 @@ try {
     WHERE p.id = ? AND p.is_active = 1
     LIMIT 1
   ");
-  $stmt->execute([$id]);
-  $profile = $stmt->fetch();
-  if (!$profile) {
-    $error = "That profile wasn’t found.";
-  }
+	$stmt->execute([$id]);
+	$profile = $stmt->fetch();
+	if (!$profile) {
+		$error = "That profile wasn’t found.";
+	}
+	
+	// Media
+	$photos = [];
+	$featured_videos = [];
+	try {
+		$st = $pdo->prepare("SELECT * FROM profile_photos WHERE profile_id=? ORDER BY is_primary DESC, sort_order ASC, id ASC");
+		$st->execute([$id]);
+		$photos = $st->fetchAll() ?: [];
+	} catch (Throwable $e) { $photos = []; }
+	
+	try {
+		$st = $pdo->prepare("SELECT * FROM profile_youtube_links WHERE profile_id=? AND is_featured=1 ORDER BY sort_order ASC, id ASC");
+		$st->execute([$id]);
+		$featured_videos = $st->fetchAll() ?: [];
+	} catch (Throwable $e) { $featured_videos = []; }
+	
 } catch (Throwable $e) {
-  $error = "Profile error: " . $e->getMessage();
-//  $error = "Profile isn’t available yet (database not connected).";
+	$error = "Profile error: " . $e->getMessage();
+	//  $error = "Profile isn’t available yet (database not connected).";
+}
+
+
+function youtube_embed_url(?string $ytid): ?string {
+	if (!$ytid) return null;
+	return "https://www.youtube.com/embed/" . $ytid;
 }
 
 $title = $profile ? ($profile['name'] ?? 'Profile') : "Profile";
@@ -66,6 +88,24 @@ $title = $profile ? ($profile['name'] ?? 'Profile') : "Profile";
     <?php else: ?>
       <div class="card" style="border-radius: 18px;">
         <div class="card-body" style="padding: 18px;">
+
+          <?php
+            $primary = null;
+            foreach ($photos as $ph) { if ((int)$ph['is_primary'] === 1) { $primary = $ph; break; } }
+            if (!$primary && !empty($photos)) $primary = $photos[0];
+          ?>
+          <?php if ($primary): ?>
+            <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+              <img src="<?= h(BASE_URL) ?>/<?= h($primary['file_path']) ?>"
+                   alt="<?= h($profile['name'] ?? 'Profile') ?>"
+                   style="width:120px;height:120px;border-radius:18px;object-fit:cover;border:1px solid rgba(15,23,42,0.12);" />
+              <div>
+                <div style="font-size:12px;color:rgba(15,23,42,0.65);">Photos: <?= (int)count($photos) ?></div>
+              </div>
+            </div>
+          <?php endif; ?>
+
+
           <div style="display:flex; justify-content:space-between; gap: 12px; flex-wrap:wrap; align-items:flex-start;">
             <div>
               <h1 style="margin:0; font-size: 22px; letter-spacing: -0.02em;"><?= h($profile['name'] ?? '') ?></h1>
@@ -107,6 +147,30 @@ $title = $profile ? ($profile['name'] ?? 'Profile') : "Profile";
           <?php else: ?>
             <div style="margin-top: 14px; color: rgba(15,23,42,0.72);">
               No bio yet.
+            </div>
+          <?php endif; ?>
+
+
+          <?php if (!empty($featured_videos)): ?>
+            <div style="margin-top: 14px;">
+              <h3 style="margin:0 0 10px 0;">Videos</h3>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;">
+                <?php foreach ($featured_videos as $v): ?>
+                  <div style="border:1px solid rgba(15,23,42,0.10);border-radius:14px;padding:12px;">
+                    <div style="font-weight:700;margin-bottom:8px;"><?= h($v['title'] ?: 'YouTube') ?></div>
+                    <?php if (!empty($v['youtube_id'])): ?>
+                      <div style="aspect-ratio:16/9;">
+                        <iframe width="100%" height="100%"
+                          src="https://www.youtube.com/embed/<?= h($v['youtube_id']) ?>"
+                          title="YouTube video player"
+                          frameborder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowfullscreen></iframe>
+                      </div>
+                    <?php endif; ?>
+                  </div>
+                <?php endforeach; ?>
+              </div>
             </div>
           <?php endif; ?>
 

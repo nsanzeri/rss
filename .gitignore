@@ -10,3 +10,4 @@ Thumbs.db
 .project
 sql/zipcodes.sql
 sql/googleOauthInserts.sql
+/public/uploads/profiles/
