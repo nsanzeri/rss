@@ -31,7 +31,8 @@ try {
     $error = "That profile wasn’t found.";
   }
 } catch (Throwable $e) {
-  $error = "Profile isn’t available yet (database not connected).";
+  $error = "Profile error: " . $e->getMessage();
+//  $error = "Profile isn’t available yet (database not connected).";
 }
 
 $title = $profile ? ($profile['name'] ?? 'Profile') : "Profile";

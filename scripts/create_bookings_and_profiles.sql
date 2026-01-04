@@ -1,0 +1,55 @@
+-- Ready Set Shows: Bookings + Profiles tables (starter)
+-- Run in your MySQL DB (DB_NAME in config.php)
+-- Safe to run multiple times (IF NOT EXISTS).
+
+CREATE TABLE IF NOT EXISTS profiles (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id BIGINT UNSIGNED NOT NULL,
+  profile_type VARCHAR(32) NOT NULL DEFAULT 'artist',
+  name VARCHAR(190) NOT NULL,
+  city VARCHAR(120) DEFAULT NULL,
+  state VARCHAR(32) DEFAULT NULL,
+  zip VARCHAR(16) DEFAULT NULL,
+  genres VARCHAR(255) DEFAULT NULL,
+  bio TEXT DEFAULT NULL,
+  website VARCHAR(255) DEFAULT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at DATETIME DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY idx_profiles_user (user_id),
+  KEY idx_profiles_active (is_active),
+  CONSTRAINT fk_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS bookings (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id BIGINT UNSIGNED NOT NULL,
+  profile_id BIGINT UNSIGNED DEFAULT NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'inquiry',
+  event_title VARCHAR(190) NOT NULL,
+  event_date DATE DEFAULT NULL,
+  start_time TIME DEFAULT NULL,
+  end_time TIME DEFAULT NULL,
+  venue_name VARCHAR(190) DEFAULT NULL,
+  venue_address VARCHAR(255) DEFAULT NULL,
+  city VARCHAR(120) DEFAULT NULL,
+  state VARCHAR(32) DEFAULT NULL,
+  zip VARCHAR(16) DEFAULT NULL,
+  contact_name VARCHAR(120) DEFAULT NULL,
+  contact_email VARCHAR(190) DEFAULT NULL,
+  contact_phone VARCHAR(64) DEFAULT NULL,
+  fee DECIMAL(10,2) DEFAULT NULL,
+  deposit DECIMAL(10,2) DEFAULT NULL,
+  notes TEXT DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at DATETIME DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY idx_bookings_user (user_id),
+  KEY idx_bookings_status (status),
+  KEY idx_bookings_date (event_date),
+  CONSTRAINT fk_bookings_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_bookings_profile FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

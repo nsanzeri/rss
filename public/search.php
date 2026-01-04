@@ -1,5 +1,6 @@
 <?php
-require_once __DIR__ . "/../core/bootstrap.php";
+$HIDE_NAV = false;
+require_once __DIR__ . "/_layout.php";
 
 // Public search results page (Discovery v1)
 $q = trim($_GET['q'] ?? '');
@@ -97,7 +98,8 @@ if ($zip !== '' && !$search_error) {
       $search_results = $stmt->fetchAll();
     }
   } catch (Throwable $e) {
-    $search_error = "Search isn’t available yet (database not connected).";
+  	$search_error = "Search error: " . $e->getMessage();
+//    $search_error = "Search isn’t available yet (database not connected).";
   }
 }
 
