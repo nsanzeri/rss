@@ -6,8 +6,8 @@ $user = auth_user();
 // Phase 1: keep development convenient — authenticated users go straight to Ops.
 // Add ?stay=1 to preview the public landing while logged in.
 if ($user && empty($_GET['stay'])) {
-    header("Location: " . BASE_URL . "/dashboard.php");
-    exit;
+	header("Location: " . BASE_URL . "/dashboard.php");
+	exit;
 }
 
 $q = trim($_GET['q'] ?? '');
@@ -16,7 +16,7 @@ $when = trim($_GET['when'] ?? '');
 $radius = (int)($_GET['radius'] ?? 25);
 $type = trim($_GET['type'] ?? 'all');
 
-$allowed_radii = [5,10,25,50,100];
+$allowed_radii = [0,5,10,25,50,100];
 if (!in_array($radius, $allowed_radii, true)) { $radius = 25; }
 
 $allowed_types = ['all','band','venue'];
@@ -25,15 +25,15 @@ if (!in_array($type, $allowed_types, true)) { $type = 'all'; }
 // Results now live on /search.php (clean separation + lets us build a true results UI).
 // If the user lands on /index.php with search params, bounce them to the results page.
 if ($where !== '' || $q !== '' || $when !== '') {
-    $qs = http_build_query([
-        'q' => $q,
-        'where' => $where,
-        'when' => $when,
-        'radius' => $radius,
-        'type' => $type,
-    ]);
-    header("Location: " . BASE_URL . "/search.php?" . $qs);
-    exit;
+	$qs = http_build_query([
+			'q' => $q,
+			'where' => $where,
+			'when' => $when,
+			'radius' => $radius,
+			'type' => $type,
+	]);
+	header("Location: " . BASE_URL . "/search.php?" . $qs);
+	exit;
 }
 ?>
 <!doctype html>
@@ -81,6 +81,7 @@ if ($where !== '' || $q !== '' || $when !== '') {
           <div>
             <label>Radius</label>
             <select name="radius">
+              <option value="0" <?= $radius===0 ? 'selected' : '' ?>>Anywhere</option>
               <?php foreach ([5,10,25,50,100] as $r): ?>
                 <option value="<?= (int)$r ?>" <?= $radius===$r ? 'selected' : '' ?>><?= (int)$r ?> miles</option>
               <?php endforeach; ?>

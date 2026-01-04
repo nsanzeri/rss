@@ -9,7 +9,7 @@ $when = trim($_GET['when'] ?? '');
 $radius = (int)($_GET['radius'] ?? 25);
 $type = trim($_GET['type'] ?? 'all');
 
-$allowed_radii = [5,10,25,50,100];
+$allowed_radii = [0,5,10,25,50,100];
 if (!in_array($radius, $allowed_radii, true)) { $radius = 25; }
 
 $allowed_types = ['all','band','venue'];
@@ -19,31 +19,37 @@ $search_error = '';
 $search_results = [];
 $search_location_label = '';
 
-// Require a ZIP to run the geo search
+// Search mode:
+// - radius = 0 => "Anywhere" (artist-only search; ignores ZIP)
+// - radius > 0 => geo search by ZIP + optional keyword filter
+$mode_anywhere = ($radius === 0);
+
+// Parse ZIP only when we are doing geo search
 $zip = '';
-if ($where !== '' && preg_match('/(\d{5})/', $where, $mm)) {
-  $zip = $mm[1];
-} elseif ($where !== '') {
-  $search_error = "Enter a 5-digit ZIP code to search nearby.";
+if (!$mode_anywhere) {
+	if ($where !== '' && preg_match('/(\d{5})/', $where, $mm)) {
+		$zip = $mm[1];
+	} elseif ($where !== '') {
+		$search_error = "Enter a 5-digit ZIP code to search nearby (or choose Anywhere).";
+	} else {
+		// If user picked a radius but didn't provide a ZIP, guide them.
+		$search_error = "Enter a 5-digit ZIP code (or choose Anywhere).";
+	}
+} else {
+	// Anywhere search requires an artist query
+	if ($q === '') {
+		$search_error = "Enter an artist name to search Anywhere.";
+	}
 }
 
-if ($zip !== '' && !$search_error) {
-  try {
-    $pdo = db();
-
-    // Cache-first ZIP lookup
-    $origin = geo_zip_lookup($zip, $pdo);
-    if (!$origin) {
-      $search_error = "We don’t recognize ZIP <strong>" . h($zip) . "</strong> yet. (Seed data is included; import it to enable search.)";
-    } else {
-      $olat = (float)$origin['lat'];
-      $olng = (float)$origin['lng'];
-      $search_location_label = trim((string)($origin['city'] ?? '') . ", " . (string)($origin['state'] ?? '') . " " . (string)($origin['zip'] ?? $zip));
-
-      // Bounding-box pre-filter (fast)
-      $box = geo_bounding_box($olat, $olng, $radius);
-
-      $sql = "
+if (!$search_error) {
+	try {
+		$pdo = db();
+		
+		if ($mode_anywhere) {
+			$search_location_label = "Anywhere";
+			
+			$sql = "
         SELECT
           p.id,
           p.profile_type,
@@ -54,54 +60,103 @@ if ($zip !== '' && !$search_error) {
           p.genres,
           p.bio,
           p.website,
-          (
-            3959 * ACOS(
-              COS(RADIANS(:olat)) * COS(RADIANS(z.lat)) *
-              COS(RADIANS(z.lng) - RADIANS(:olng)) +
-              SIN(RADIANS(:olat)) * SIN(RADIANS(z.lat))
-            )
-          ) AS distance_miles
+          NULL AS distance_miles
         FROM profiles p
-        JOIN zipcodes z ON z.zip = p.zip
         WHERE p.is_active = 1
-          AND z.lat BETWEEN :min_lat AND :max_lat
-          AND z.lng BETWEEN :min_lng AND :max_lng
       ";
-
-      $params = [
-        ':olat' => $olat,
-        ':olng' => $olng,
-        ':min_lat' => $box['min_lat'],
-        ':max_lat' => $box['max_lat'],
-        ':min_lng' => $box['min_lng'],
-        ':max_lng' => $box['max_lng'],
-        ':radius' => $radius,
-      ];
-
-      if ($type !== 'all') {
-        $sql .= " AND p.profile_type = :ptype ";
-        $params[':ptype'] = $type;
-      }
-
-      if ($q !== '') {
-        $sql .= " AND (p.name LIKE :q OR p.genres LIKE :q OR p.city LIKE :q) ";
-        $params[':q'] = '%' . $q . '%';
-      }
-
-      // NOTE: No busy_dates table in this build yet, so we don't filter by $when.
-
-      $sql .= " HAVING distance_miles <= :radius ORDER BY distance_miles ASC, p.name ASC LIMIT 60 ";
-
-      $stmt = $pdo->prepare($sql);
-      foreach ($params as $k => $v) { $stmt->bindValue($k, $v); }
-      $stmt->execute();
-      $search_results = $stmt->fetchAll();
-    }
-  } catch (Throwable $e) {
-  	$search_error = "Search error: " . $e->getMessage();
-//    $search_error = "Search isn’t available yet (database not connected).";
-  }
+			
+			$params = [];
+			
+			if ($type !== 'all') {
+				$sql .= " AND p.profile_type = :ptype ";
+				$params[':ptype'] = $type;
+			}
+			
+			// Artist-name search only in Anywhere mode
+			$sql .= " AND p.name LIKE :q ";
+			$params[':q'] = '%' . $q . '%';
+			
+			$sql .= " ORDER BY p.name ASC LIMIT 60 ";
+			
+			$stmt = $pdo->prepare($sql);
+			foreach ($params as $k => $v) { $stmt->bindValue($k, $v); }
+			$stmt->execute();
+			$search_results = $stmt->fetchAll();
+			
+		} else {
+			// Cache-first ZIP lookup
+			$origin = geo_zip_lookup($zip, $pdo);
+			if (!$origin) {
+				$search_error = "We don’t recognize ZIP <strong>" . h($zip) . "</strong> yet. (Seed data is included; import it to enable search.)";
+			} else {
+				$olat = (float)$origin['lat'];
+				$olng = (float)$origin['lng'];
+				$search_location_label = trim((string)($origin['city'] ?? '') . ", " . (string)($origin['state'] ?? '') . " " . (string)($origin['zip'] ?? $zip));
+				
+				// Bounding-box pre-filter (fast)
+				$box = geo_bounding_box($olat, $olng, $radius);
+				
+				$sql = "
+          SELECT
+            p.id,
+            p.profile_type,
+            p.name,
+            p.city,
+            p.state,
+            p.zip,
+            p.genres,
+            p.bio,
+            p.website,
+            (
+              3959 * ACOS(
+                COS(RADIANS(:olat)) * COS(RADIANS(z.lat)) *
+                COS(RADIANS(z.lng) - RADIANS(:olng)) +
+                SIN(RADIANS(:olat)) * SIN(RADIANS(z.lat))
+              )
+            ) AS distance_miles
+          FROM profiles p
+          JOIN zipcodes z ON z.zip = p.zip
+          WHERE p.is_active = 1
+            AND z.lat BETWEEN :min_lat AND :max_lat
+            AND z.lng BETWEEN :min_lng AND :max_lng
+        ";
+				
+				$params = [
+						':olat' => $olat,
+						':olng' => $olng,
+						':min_lat' => $box['min_lat'],
+						':max_lat' => $box['max_lat'],
+						':min_lng' => $box['min_lng'],
+						':max_lng' => $box['max_lng'],
+						':radius' => $radius,
+				];
+				
+				if ($type !== 'all') {
+					$sql .= " AND p.profile_type = :ptype ";
+					$params[':ptype'] = $type;
+				}
+				
+				if ($q !== '') {
+					// When searching by ZIP, we let 'What' match name + genres + city
+					$sql .= " AND (p.name LIKE :q OR p.genres LIKE :q OR p.city LIKE :q) ";
+					$params[':q'] = '%' . $q . '%';
+				}
+				
+				// NOTE: No busy_dates table in this build yet, so we don't filter by $when.
+				
+				$sql .= " HAVING distance_miles <= :radius ORDER BY distance_miles ASC, p.name ASC LIMIT 60 ";
+				
+				$stmt = $pdo->prepare($sql);
+				foreach ($params as $k => $v) { $stmt->bindValue($k, $v); }
+				$stmt->execute();
+				$search_results = $stmt->fetchAll();
+			}
+		}
+	} catch (Throwable $e) {
+		$search_error = "Search error: " . $e->getMessage();
+	}
 }
+$has_context = (!$search_error && ($mode_anywhere || $zip !== ''));
 
 $title = "Search — Ready Set Shows";
 ?><!doctype html>
@@ -145,6 +200,7 @@ $title = "Search — Ready Set Shows";
           <div class="sf-field">
             <label>Radius</label>
             <select name="radius">
+              <option value="0" <?= $radius===0 ? 'selected' : '' ?>>Anywhere</option>
               <?php foreach ([5,10,25,50,100] as $r): ?>
                 <option value="<?= (int)$r ?>" <?= $radius===$r ? 'selected' : '' ?>><?= (int)$r ?> mi</option>
               <?php endforeach; ?>
@@ -167,24 +223,43 @@ $title = "Search — Ready Set Shows";
       </form>
 
       <div class="search-meta">
-        <?php if ($zip !== '' && !$search_error): ?>
-          <div class="search-title">
-            <h1><?= count($search_results) ?> photo-shoot spaces near <?= h($search_location_label ?: $zip) ?></h1>
-            <div class="muted">Discovery v1 results within <?= (int)$radius ?> miles<?php if ($type !== 'all'): ?> • <?= h(ucfirst($type)) ?>s<?php endif; ?><?php if ($q !== ''): ?> • “<?= h($q) ?>”<?php endif; ?><?php if ($when !== ''): ?> • Date filter coming soon<?php endif; ?></div>
-          </div>
+  <?php if ($has_context): ?>
+    <?php $rc = count($search_results); ?>
+    <div class="search-title">
+      <h1>
+        <?= (int)$rc ?> result<?= $rc===1 ? '' : 's' ?>
+        <?php if ($mode_anywhere): ?>
+          for “<?= h($q) ?>” (Anywhere)
         <?php else: ?>
-          <div class="search-title">
-            <h1>Search</h1>
-            <div class="muted">Enter a ZIP to see nearby bands and venues.</div>
-          </div>
+          near <?= h($search_location_label ?: $zip) ?>
         <?php endif; ?>
+      </h1>
+
+      <div class="muted">
+        <?php if ($mode_anywhere): ?>
+          Matching artist name<?php if ($type !== 'all'): ?> • <?= h(ucfirst($type)) ?>s<?php endif; ?>
+        <?php else: ?>
+          Discovery v1 results within <?= (int)$radius ?> miles
+          <?php if ($type !== 'all'): ?> • <?= h(ucfirst($type)) ?>s<?php endif; ?>
+          <?php if ($q !== ''): ?> • “<?= h($q) ?>”<?php endif; ?>
+          <?php if ($when !== ''): ?> • Date filter coming soon<?php endif; ?>
+        <?php endif; ?>
+      </div>
+    </div>
+  <?php else: ?>
+    <div class="search-title">
+      <h1>Search</h1>
+      <div class="muted">Enter a ZIP to see nearby bands and venues — or choose “Anywhere” and search by artist name.</div>
+    </div>
+  <?php endif; ?>
+</div>
       </div>
 
       <?php if ($search_error): ?>
         <div class="alert" style="margin-top: 12px;"><?= $search_error ?></div>
       <?php endif; ?>
 
-      <?php if ($zip !== '' && !$search_error): ?>
+      <?php if ($has_context): ?>
         <?php if (empty($search_results)): ?>
           <div class="results-empty" style="margin-top: 14px;">No results yet. Try a bigger radius, or search a nearby ZIP.</div>
         <?php else: ?>
