@@ -11,46 +11,46 @@ $flash = '';
 $error = '';
 
 function booking_status_label(string $s): string {
-  return match ($s) {
-    'inquiry' => 'Inquiry',
-    'pending' => 'Pending',
-    'confirmed' => 'Confirmed',
-    'canceled' => 'Canceled',
-    default => ucfirst($s),
-  };
+	return match ($s) {
+		'inquiry' => 'Inquiry',
+		'pending' => 'Pending',
+		'confirmed' => 'Confirmed',
+		'canceled' => 'Canceled',
+		default => ucfirst($s),
+	};
 }
 
 function post_str(string $k): string {
-  return trim((string)($_POST[$k] ?? ''));
+	return trim((string)($_POST[$k] ?? ''));
 }
 
 function normalize_status_for_tab(string $tab): string {
-  return match ($tab) {
-    'inquiries' => 'inquiry',
-    'pending' => 'pending',
-    'confirmed' => 'confirmed',
-    default => 'inquiry',
-  };
+	return match ($tab) {
+		'inquiries' => 'inquiry',
+		'pending' => 'pending',
+		'confirmed' => 'confirmed',
+		default => 'inquiry',
+	};
 }
 
 $action = $_POST['action'] ?? '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  try {
-    csrf_validate($_POST['csrf'] ?? '');
-
-    if ($action === 'create_booking') {
-      $status = post_str('status') ?: normalize_status_for_tab($tab);
-      $event_title = post_str('event_title');
-      if ($event_title === '') throw new Exception("Event title is required.");
-
-      $event_date = post_str('event_date') ?: null;
-      $start_time = post_str('start_time') ?: null;
-      $end_time   = post_str('end_time') ?: null;
-
-      $profile_id = (int)($_POST['profile_id'] ?? 0);
-      if ($profile_id <= 0) $profile_id = null;
-
-      $stmt = $pdo->prepare("
+	try {
+		csrf_validate($_POST['csrf'] ?? '');
+		
+		if ($action === 'create_booking') {
+			$status = post_str('status') ?: normalize_status_for_tab($tab);
+			$event_title = post_str('event_title');
+			if ($event_title === '') throw new Exception("Event title is required.");
+			
+			$event_date = post_str('event_date') ?: null;
+			$start_time = post_str('start_time') ?: null;
+			$end_time   = post_str('end_time') ?: null;
+			
+			$profile_id = (int)($_POST['profile_id'] ?? 0);
+			if ($profile_id <= 0) $profile_id = null;
+			
+			$stmt = $pdo->prepare("
         INSERT INTO bookings
           (user_id, profile_id, status, event_title, event_date, start_time, end_time,
            venue_name, venue_address, city, state, zip,
@@ -62,51 +62,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
            :contact_name, :contact_email, :contact_phone,
            :fee, :deposit, :notes)
       ");
-      $stmt->execute([
-        ':user_id' => $u['id'],
-        ':profile_id' => $profile_id,
-        ':status' => $status,
-        ':event_title' => $event_title,
-        ':event_date' => $event_date,
-        ':start_time' => $start_time,
-        ':end_time' => $end_time,
-        ':venue_name' => post_str('venue_name') ?: null,
-        ':venue_address' => post_str('venue_address') ?: null,
-        ':city' => post_str('city') ?: null,
-        ':state' => post_str('state') ?: null,
-        ':zip' => post_str('zip') ?: null,
-        ':contact_name' => post_str('contact_name') ?: null,
-        ':contact_email' => post_str('contact_email') ?: null,
-        ':contact_phone' => post_str('contact_phone') ?: null,
-        ':fee' => (post_str('fee') !== '' ? (float)post_str('fee') : null),
-        ':deposit' => (post_str('deposit') !== '' ? (float)post_str('deposit') : null),
-        ':notes' => post_str('notes') ?: null,
-      ]);
-
-      $flash = "Booking created.";
-    }
-
-    if ($action === 'update_booking') {
-      $id = (int)($_POST['id'] ?? 0);
-      if ($id <= 0) throw new Exception("Missing booking id.");
-
-      // ownership check
-      $stmt = $pdo->prepare("SELECT id FROM bookings WHERE id=? AND user_id=? AND deleted_at IS NULL LIMIT 1");
-      $stmt->execute([$id, $u['id']]);
-      if (!$stmt->fetch()) throw new Exception("Booking not found.");
-
-      $status = post_str('status') ?: 'inquiry';
-      $event_title = post_str('event_title');
-      if ($event_title === '') throw new Exception("Event title is required.");
-
-      $event_date = post_str('event_date') ?: null;
-      $start_time = post_str('start_time') ?: null;
-      $end_time   = post_str('end_time') ?: null;
-
-      $profile_id = (int)($_POST['profile_id'] ?? 0);
-      if ($profile_id <= 0) $profile_id = null;
-
-      $stmt = $pdo->prepare("
+			$stmt->execute([
+					':user_id' => $u['id'],
+					':profile_id' => $profile_id,
+					':status' => $status,
+					':event_title' => $event_title,
+					':event_date' => $event_date,
+					':start_time' => $start_time,
+					':end_time' => $end_time,
+					':venue_name' => post_str('venue_name') ?: null,
+					':venue_address' => post_str('venue_address') ?: null,
+					':city' => post_str('city') ?: null,
+					':state' => post_str('state') ?: null,
+					':zip' => post_str('zip') ?: null,
+					':contact_name' => post_str('contact_name') ?: null,
+					':contact_email' => post_str('contact_email') ?: null,
+					':contact_phone' => post_str('contact_phone') ?: null,
+					':fee' => (post_str('fee') !== '' ? (float)post_str('fee') : null),
+					':deposit' => (post_str('deposit') !== '' ? (float)post_str('deposit') : null),
+					':notes' => post_str('notes') ?: null,
+			]);
+			
+			$flash = "Booking created.";
+		}
+		
+		if ($action === 'update_booking') {
+			$id = (int)($_POST['id'] ?? 0);
+			if ($id <= 0) throw new Exception("Missing booking id.");
+			
+			// ownership check
+			$stmt = $pdo->prepare("SELECT id FROM bookings WHERE id=? AND user_id=? AND deleted_at IS NULL LIMIT 1");
+			$stmt->execute([$id, $u['id']]);
+			if (!$stmt->fetch()) throw new Exception("Booking not found.");
+			
+			$status = post_str('status') ?: 'inquiry';
+			$event_title = post_str('event_title');
+			if ($event_title === '') throw new Exception("Event title is required.");
+			
+			$event_date = post_str('event_date') ?: null;
+			$start_time = post_str('start_time') ?: null;
+			$end_time   = post_str('end_time') ?: null;
+			
+			$profile_id = (int)($_POST['profile_id'] ?? 0);
+			if ($profile_id <= 0) $profile_id = null;
+			
+			$stmt = $pdo->prepare("
         UPDATE bookings SET
           profile_id=:profile_id,
           status=:status,
@@ -127,70 +127,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           notes=:notes
         WHERE id=:id AND user_id=:user_id AND deleted_at IS NULL
       ");
-      $stmt->execute([
-        ':profile_id' => $profile_id,
-        ':status' => $status,
-        ':event_title' => $event_title,
-        ':event_date' => $event_date,
-        ':start_time' => $start_time,
-        ':end_time' => $end_time,
-        ':venue_name' => post_str('venue_name') ?: null,
-        ':venue_address' => post_str('venue_address') ?: null,
-        ':city' => post_str('city') ?: null,
-        ':state' => post_str('state') ?: null,
-        ':zip' => post_str('zip') ?: null,
-        ':contact_name' => post_str('contact_name') ?: null,
-        ':contact_email' => post_str('contact_email') ?: null,
-        ':contact_phone' => post_str('contact_phone') ?: null,
-        ':fee' => (post_str('fee') !== '' ? (float)post_str('fee') : null),
-        ':deposit' => (post_str('deposit') !== '' ? (float)post_str('deposit') : null),
-        ':notes' => post_str('notes') ?: null,
-        ':id' => $id,
-        ':user_id' => $u['id'],
-      ]);
-
-      $flash = "Booking updated.";
-    }
-
-    if ($action === 'delete_booking') {
-      $id = (int)($_POST['id'] ?? 0);
-      if ($id <= 0) throw new Exception("Missing booking id.");
-      $stmt = $pdo->prepare("UPDATE bookings SET deleted_at=NOW() WHERE id=? AND user_id=? AND deleted_at IS NULL");
-      $stmt->execute([$id, $u['id']]);
-      $flash = "Booking deleted.";
-    }
-
-  } catch (Throwable $e) {
-    $error = $e->getMessage();
-  }
+			$stmt->execute([
+					':profile_id' => $profile_id,
+					':status' => $status,
+					':event_title' => $event_title,
+					':event_date' => $event_date,
+					':start_time' => $start_time,
+					':end_time' => $end_time,
+					':venue_name' => post_str('venue_name') ?: null,
+					':venue_address' => post_str('venue_address') ?: null,
+					':city' => post_str('city') ?: null,
+					':state' => post_str('state') ?: null,
+					':zip' => post_str('zip') ?: null,
+					':contact_name' => post_str('contact_name') ?: null,
+					':contact_email' => post_str('contact_email') ?: null,
+					':contact_phone' => post_str('contact_phone') ?: null,
+					':fee' => (post_str('fee') !== '' ? (float)post_str('fee') : null),
+					':deposit' => (post_str('deposit') !== '' ? (float)post_str('deposit') : null),
+					':notes' => post_str('notes') ?: null,
+					':id' => $id,
+					':user_id' => $u['id'],
+			]);
+			
+			$flash = "Booking updated.";
+		}
+		
+		if ($action === 'delete_booking') {
+			$id = (int)($_POST['id'] ?? 0);
+			if ($id <= 0) throw new Exception("Missing booking id.");
+			$stmt = $pdo->prepare("UPDATE bookings SET deleted_at=NOW() WHERE id=? AND user_id=? AND deleted_at IS NULL");
+			$stmt->execute([$id, $u['id']]);
+			$flash = "Booking deleted.";
+		}
+		
+	} catch (Throwable $e) {
+		$error = $e->getMessage();
+	}
 }
 
 // profiles for dropdown
 $profiles = [];
 try {
-  $stmt = $pdo->prepare("SELECT id, name FROM profiles WHERE user_id=? AND deleted_at IS NULL ORDER BY created_at DESC");
-  $stmt->execute([$u['id']]);
-  $profiles = $stmt->fetchAll() ?: [];
+	$stmt = $pdo->prepare("SELECT id, name FROM profiles WHERE user_id=? AND deleted_at IS NULL ORDER BY created_at DESC");
+	$stmt->execute([$u['id']]);
+	$profiles = $stmt->fetchAll() ?: [];
 } catch (Throwable $e) {
-  // profiles table might not exist yet; keep dropdown empty
-  $profiles = [];
+	// profiles table might not exist yet; keep dropdown empty
+	$profiles = [];
 }
 
 // which bookings to fetch
-$where = "user_id = :uid AND deleted_at IS NULL";
+$where = "b.user_id = :uid AND b.deleted_at IS NULL";
 $params = [':uid' => $u['id']];
 
 if ($tab === 'inquiries') {
-  $where .= " AND status = 'inquiry'";
+	$where .= " AND b.status = 'inquiry'";
 } elseif ($tab === 'pending') {
-  $where .= " AND status = 'pending'";
+	$where .= " AND b.status = 'pending'";
 } elseif ($tab === 'confirmed') {
-  $where .= " AND status = 'confirmed'";
+	$where .= " AND b.status = 'confirmed'";
 }
 
 $rows = [];
 try {
-  $stmt = $pdo->prepare("
+	$stmt = $pdo->prepare("
     SELECT b.*, p.name AS profile_name
     FROM bookings b
     LEFT JOIN profiles p ON p.id = b.profile_id
@@ -206,21 +206,22 @@ try {
       COALESCE(b.event_date, '2099-12-31') ASC,
       b.created_at DESC
   ");
-  $stmt->execute($params);
-  $rows = $stmt->fetchAll() ?: [];
+	$stmt->execute($params);
+	$rows = $stmt->fetchAll() ?: [];
 } catch (Throwable $e) {
-  $rows = [];
-  if (!$error) {
-    $error = "Bookings table not found yet. Run scripts/create_bookings_and_profiles.sql in your DB, then refresh.";
-  }
+	$rows = [];
+	if (!$error) {
+		$error = $e->getMessage();
+		//    $error = "Bookings table not found yet. Run scripts/create_bookings_and_profiles.sql in your DB, then refresh.";
+	}
 }
 
 $editId = (int)($_GET['edit'] ?? 0);
 $editing = null;
 if ($editId > 0) {
-  foreach ($rows as $r) {
-    if ((int)$r['id'] === $editId) { $editing = $r; break; }
-  }
+	foreach ($rows as $r) {
+		if ((int)$r['id'] === $editId) { $editing = $r; break; }
+	}
 }
 
 $showNew = !empty($_GET['new']);
