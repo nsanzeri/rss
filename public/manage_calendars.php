@@ -157,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("INSERT INTO calendar_events (calendar_id, title, status, is_all_day, start_utc, end_utc, source, created_at)
                                VALUES (?,?,?,?,?,?, 'manual', NOW())");
         $stmt->execute([$calendarId, ($title ?: 'Manual block'), $type, $allDay, $startUtc->format('Y-m-d H:i:s'), $endUtc->format('Y-m-d H:i:s')]);
-        $flash = "Saved.";
+        $flash = "Saved. Tip: you can edit or delete blocks from the Dashboard calendar widget.";
       } catch (Throwable $e) {
         $err = "Could not save block: " . $e->getMessage();
       }
@@ -214,19 +214,17 @@ page_header("Manage Calendars");
 ------------------------------------------------------------------ */
 .manage-wrap{
   max-width: 1100px;
-  margin: 0;
+  margin: 0 auto;
+  padding: 0 14px;
 }
 
 .manage-grid{
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Stack the 3 cards vertically, like the reference screenshot */
+  display: flex;
+  flex-direction: column;
   gap: 18px;
-  align-items: start;
 }
 
-@media (max-width: 980px){
-  .manage-grid{ grid-template-columns: 1fr; }
-}
 
 .manage-card h2{ margin: 0 0 6px; }
 .manage-help{ margin: 0 0 14px; }
@@ -234,6 +232,61 @@ page_header("Manage Calendars");
 .manage-form{
   display: grid;
   gap: 12px;
+}
+
+/* Add Calendar grid (match screenshot positioning) */
+.addcal-grid{
+  display:grid;
+  grid-template-columns: 92px 1.1fr 1.3fr 220px;
+  gap: 12px;
+  align-items:end;
+}
+.addcal-grid .span-2{ grid-column: span 2; }
+.addcal-grid .span-3{ grid-column: span 3; }
+@media (max-width: 980px){
+  .addcal-grid{ grid-template-columns: 92px 1fr; }
+  .addcal-grid .span-2,
+  .addcal-grid .span-3{ grid-column: 1 / -1; }
+}
+
+.addcal-actions{
+  display:flex;
+  gap: 10px;
+  align-items:center;
+  justify-content:flex-end;
+  flex-wrap:wrap;
+}
+
+.btn-icon{
+  width: 40px;
+  height: 36px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 0;
+}
+
+.sr-only{
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0;
+}
+
+.inline-check{
+  display:flex;
+  gap: 10px;
+  align-items:center;
+  justify-content:flex-start;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 10px;
+  background: rgba(8,10,18,.35);
 }
 
 .manage-form .row{
@@ -258,6 +311,21 @@ page_header("Manage Calendars");
   text-transform: none !important;
   letter-spacing: 0.02em !important;
   margin-bottom: 6px;
+}
+
+/* Checkboxes: keep label text immediately to the right */
+.manage-form label.checkbox,
+.manage-form .checkbox{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  text-transform: none !important;
+  letter-spacing: 0.02em !important;
+}
+.manage-form label.checkbox input[type="checkbox"],
+.manage-form .checkbox input[type="checkbox"]{
+  margin: 0;
 }
 
 .manage-form .field > label{
@@ -411,6 +479,9 @@ page_header("Manage Calendars");
   box-shadow: 0 0 0 3px rgba(212,175,55,.10);
 }
 
+/* x-cloak helper (prevents flash of hidden content) */
+[x-cloak]{ display:none !important; }
+
 </style>
 
 <?php if ($flash): ?><div class="alert success"><?= h($flash) ?></div><?php endif; ?>
@@ -425,44 +496,52 @@ page_header("Manage Calendars");
         <div class="card-title">Add New Calendar</div>
         <p class="muted manage-help">Connect personal, band, and venue calendars. Choose a source type and optionally mark a default.</p>
 
-        <form method="post" class="manage-form">
+        <form method="post" class="manage-form" x-data="{ linked:false }">
           <input type="hidden" name="action" value="add_calendar"/>
           <input type="hidden" name="csrf" value="<?= h(csrf_token()) ?>"/>
 
-          <div class="row row-2">
+          <div class="addcal-grid">
             <div class="field">
               <label for="new_color">Color</label>
               <input id="new_color" type="color" name="calendar_color" value="#3b82f6"/>
             </div>
 
-            <div class="field" style="grid-column: span 3;">
+            <div class="field">
               <label for="new_name">Name</label>
               <input id="new_name" class="in" type="text" name="calendar_name" placeholder="Calendar name" required/>
             </div>
-          </div>
 
-          <div class="field">
-            <label for="new_desc">Description</label>
-            <input id="new_desc" class="in" type="text" name="description" placeholder="e.g. Personal gigs, Duo calendar, Bookings only…"/>
-          </div>
-
-          <div class="checkbox-container" x-data="{ linked: false }">
-            <label class="checkbox" style="margin:0;">
-              <input type="checkbox" name="link_external" value="1" x-model="linked"/>
-              Link external calendar (optional)
-            </label>
-
-            <div x-show="linked" x-cloak style="margin-top:10px;">
-              <label for="new_url">Calendar URL</label>
-              <input id="new_url" class="in" type="url" name="source_url" placeholder="Paste an iCal/ICS URL from Google, Apple, Outlook, etc."/>
+            <div class="field">
+              <label for="new_desc">Description</label>
+              <input id="new_desc" class="in" type="text" name="description" placeholder="e.g. Personal gigs, Duo calendar, Bookings only…"/>
             </div>
-          </div>
 
-          <div class="checkbox-container">
-            <label class="checkbox" style="margin:0;">
-              <input type="checkbox" name="is_default" value="1"/> Make this my default calendar
-            </label>
-            <button class="btn btn-primary" type="submit">Add Calendar</button>
+            <div class="field">
+              <label>&nbsp;</label>
+              <label class="inline-check" style="margin:0;">
+                <input type="checkbox" name="is_default" value="1"/>
+                <span style="font-weight:700;">Default calendar</span>
+              </label>
+            </div>
+
+            <div class="field span-3" style="margin-top:2px;">
+              <label class="checkbox" style="margin:0;">
+                <input type="checkbox" name="link_external" value="1" x-model="linked"/>
+                Link external calendar (optional)
+              </label>
+
+              <div x-show="linked" x-cloak style="margin-top:10px;">
+                <label for="new_url">Calendar URL</label>
+                <input id="new_url" class="in" type="url" name="source_url" placeholder="Paste an iCal/ICS URL from Google, Apple, Outlook, etc."/>
+              </div>
+            </div>
+
+            <div class="field" style="margin-top:2px;">
+              <label>&nbsp;</label>
+              <div class="addcal-actions">
+                <button class="btn btn-primary" type="submit">Add Calendar</button>
+              </div>
+            </div>
           </div>
         </form>
       </div>
@@ -474,7 +553,7 @@ page_header("Manage Calendars");
         <div class="card-title">Manual Block / Availability</div>
         <p class="muted manage-help">Quickly add a manual hold or available slot (affects Check Availability).</p>
 
-        <form method="post" class="manage-form">
+        <form method="post" class="manage-form" x-data="{ allDay: true }">
           <input type="hidden" name="csrf" value="<?= h(csrf_token()) ?>"/>
           <input type="hidden" name="action" value="add_block"/>
 
@@ -504,17 +583,17 @@ page_header("Manage Calendars");
             <div class="field">
               <label>&nbsp;</label>
               <label class="checkbox" style="margin:0;">
-                <input type="checkbox" name="all_day" value="1" checked/> All day
+                <input type="checkbox" name="all_day" value="1" checked x-model="allDay"/> All Day
               </label>
             </div>
 
-            <div class="field">
-              <label>Start time (if not all-day)</label>
+            <div class="field" x-show="!allDay" x-cloak>
+              <label>Start time</label>
               <input class="in" type="time" name="start_time" value="18:00"/>
             </div>
 
-            <div class="field">
-              <label>End time (if not all-day)</label>
+            <div class="field" x-show="!allDay" x-cloak>
+              <label>End time</label>
               <input class="in" type="time" name="end_time" value="21:00"/>
             </div>
 
@@ -538,7 +617,7 @@ page_header("Manage Calendars");
   <div class="card manage-table">
     <div class="card-body">
       <div class="card-title">Your Calendars</div>
-      <p class="muted">Edit inline and click Save. For ICS calendars: Save first, then Import.</p>
+        <p class="muted">Edit inline and click Save. For ICS calendars: Save first, then Import.</p>
 
       <?php if (!$cals): ?>
         <p class="muted">No calendars yet.</p>
@@ -620,10 +699,11 @@ page_header("Manage Calendars");
               <!-- Actions -->
               <div class="mc-actions" style="justify-content:flex-end;">
                 <button type="submit" class="btn small">Save</button>
-<a class="btn small btn-danger"
+                <a class="btn small btn-danger btn-icon"
                    href="<?= h(BASE_URL) ?>/manage_calendars.php?action=delete&id=<?= (int)$c['id'] ?>&csrf=<?= h(csrf_token()) ?>"
                    onclick="return confirm('Delete this calendar?');">
-                  Delete
+                  <span aria-hidden="true">🗑️</span>
+                  <span class="sr-only">Delete</span>
                 </a>
               </div>
             </form>
