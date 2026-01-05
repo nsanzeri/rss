@@ -3,8 +3,8 @@
 ## 1) Create DB
 In phpMyAdmin or MySQL CLI:
 
-- Create database: `readysetshows_ops`
-- Run: `sql/001_schema.sql`
+- Create database: `readysetshows`
+- Run: `sql/readysetshows_schema.sql`
 
 ## 2) Configure
 Edit `config.php` OR set env vars:
@@ -20,10 +20,10 @@ Optional Google Sign‑In:
 (or insert into `app_secrets`)
 
 ## 3) Local URL
-If you place this folder under XAMPP `htdocs` as `readysetshows_ops_v1`,
+If you place this folder under XAMPP `htdocs` as `rss`,
 you can browse:
 
-- http://localhost/readysetshows_ops_v1/public/
+- http://localhost/rss/public/
 
 ## 4) First run
 - Create account at /public/register.php
