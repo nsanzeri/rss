@@ -85,6 +85,8 @@ function page_header(string $title): void {
         <title><?= h($title) ?> • <?= h(APP_NAME) ?></title>
         <link rel="stylesheet" href="<?= h(BASE_URL) ?>/assets/css/app.css"/>
         <script>const BASE_URL = <?= json_encode(BASE_URL) ?>;</script>
+        <!-- Alpine.js (used for modal-driven flows like ICS import on Manage Calendars) -->
+        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
     </head>
     <body>
 

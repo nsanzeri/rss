@@ -756,3 +756,75 @@ th{ font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: va
 .listing-actions{ margin-top: 12px; display:flex; gap: 8px; flex-wrap:wrap; }
 
 .logo-square{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:rgba(124,58,237,1);color:#fff;font-weight:800;font-size:13px;letter-spacing:0.08em;}
+
+/* =========================================================
+   RSS Modal (Alpine)
+   Used by: Manage Calendars (ICS Import preview/import)
+   ========================================================= */
+[x-cloak]{ display:none !important; }
+
+.rs-modal-backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.rs-modal{
+  width: min(860px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  border: 1px solid rgba(0,0,0,.06);
+}
+
+.rs-modal__head,
+.rs-modal__foot{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.rs-modal__head{
+  border-bottom: 1px solid rgba(0,0,0,.08);
+}
+
+.rs-modal__body{
+  padding: 14px 16px;
+}
+
+.rs-modal__foot{
+  border-top: 1px solid rgba(0,0,0,.08);
+}
+
+.rs-preview{
+  border: 1px solid rgba(0,0,0,.10);
+  border-radius: 14px;
+  padding: 10px;
+  max-height: 320px;
+  overflow: auto;
+  background: rgba(2,6,23,.02);
+}
+
+.rs-preview__item{
+  display:flex;
+  gap: 10px;
+  align-items:flex-start;
+  padding: 10px;
+  border-radius: 12px;
+}
+
+.rs-preview__item:hover{
+  background: rgba(2,6,23,.04);
+}
+
+.rs-preview__meta{ flex: 1; min-width: 0; }
+.rs-preview__title{ font-weight: 700; margin-bottom: 2px; }

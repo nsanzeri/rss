@@ -201,8 +201,7 @@ $cals = $stmt->fetchAll(PDO::FETCH_ASSOC);
 page_header("Manage Calendars");
 ?>
 
-<!-- Alpine for modal-driven ICS import -->
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+<!-- Alpine is loaded globally in _layout.php -->
 
 <style>
 /* ------------------------------------------------------------------
@@ -636,7 +635,7 @@ page_header("Manage Calendars");
 
   <!-- Import Calendar Modal -->
   <template x-if="isOpen">
-    <div class="rs-modal-backdrop" @click="close()" @keydown.escape.window="close()">
+    <div class="rs-modal-backdrop" x-cloak @click="close()" @keydown.escape.window="close()">
       <div class="rs-modal" role="dialog" aria-label="Import Calendar" @click.stop>
         <div class="rs-modal__head">
           <h3 style="margin:0;">Import Calendar</h3>
