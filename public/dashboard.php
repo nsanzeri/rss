@@ -53,14 +53,31 @@ $calendars = $stmt->fetchAll();
 
 $allCalendarIds = array_map(fn($c) => (int)$c['id'], $calendars);
 
-// Selected calendars (default: all)
+// Selected calendars
+// Default is "all" *unless* the user has explicitly applied a filter.
+// Important: the form can't submit an empty cal[] array, so we add a hidden
+// cal_filter=1 flag. When that flag is present and cal[] is absent/empty,
+// we interpret it as "show none" (and therefore show no events).
+$filterApplied = isset($_GET['cal_filter']) || isset($_GET['cal']);
+
 $selected = $_GET['cal'] ?? [];
 if (!is_array($selected)) { $selected = [$selected]; }
 $selectedIds = array_values(array_unique(array_filter(array_map('intval', $selected))));
-if (!$selectedIds) {
-    $selectedIds = $allCalendarIds;
+
+if (!$filterApplied) {
+  // First visit: show everything
+  $selectedIds = $allCalendarIds;
 }
 $selectedSet = array_fill_keys($selectedIds, true);
+
+// Preserve filter state across month navigation.
+// We only add cal_filter to the query once the user has interacted with filters.
+$calQs = '';
+if ($filterApplied) {
+  $params = ['cal_filter' => 1];
+  if ($selectedIds) { $params['cal'] = $selectedIds; }
+  $calQs = '&' . http_build_query($params);
+}
 
 // ---------------------------------------------
 // Fetch events overlapping grid range (UTC storage)
@@ -120,6 +137,7 @@ if ($allCalendarIds && $selectedIds) {
                     'id' => (int)$e['id'],
                     'calendar_id' => (int)$e['calendar_id'],
                     'title' => $e['title'] ?: '(No title)',
+                    'notes' => $e['notes'] ?? '',
                     'status' => $e['status'],
                     'is_all_day' => (int)$e['is_all_day'] === 1,
                     'source' => $e['source'],
@@ -132,6 +150,37 @@ if ($allCalendarIds && $selectedIds) {
             $cur = $cur->modify('+1 day');
         }
     }
+}
+
+
+
+// -------------------------------------------------
+// Dashboard modal payload (date -> events JSON)
+// -------------------------------------------------
+$eventsJsonByDay = [];
+foreach ($eventsByDay as $dayKey => $evs) {
+    $eventsJsonByDay[$dayKey] = array_map(function($ev) use ($tz) {
+        $startLocal = $ev['start_local'];
+        $endLocal = $ev['end_local'];
+        return [
+            'id' => (int)$ev['id'],
+            'calendar_id' => (int)$ev['calendar_id'],
+            'calendar_name' => (string)$ev['calendar_name'],
+            'calendar_color' => (string)$ev['calendar_color'],
+            'title' => (string)$ev['title'],
+            'status' => (string)$ev['status'],
+            'source' => (string)$ev['source'],
+            'is_all_day' => $ev['is_all_day'] ? 1 : 0,
+            // local, for editing
+            'date' => $startLocal->format('Y-m-d'),
+            'start_time' => $ev['is_all_day'] ? '' : $startLocal->format('H:i'),
+            'end_time' => $ev['is_all_day'] ? '' : $endLocal->format('H:i'),
+            // display
+            'start_label' => $ev['is_all_day'] ? 'All day' : $startLocal->format('g:ia'),
+            'end_label' => $ev['is_all_day'] ? '' : $endLocal->format('g:ia'),
+            'notes' => (string)($ev['notes'] ?? ''),
+        ];
+    }, $evs);
 }
 
 // Track a lightweight dashboard view
@@ -222,6 +271,7 @@ page_header("Dashboard");
       <?php else: ?>
         <form id="calFilter" method="get" action="<?= h(BASE_URL) ?>/dashboard.php">
           <input type="hidden" name="ym" value="<?= h($ym) ?>"/>
+          <input type="hidden" name="cal_filter" value="1"/>
 
           <div class="cal-controls">
             <button type="button" id="calAll">All</button>
@@ -271,12 +321,12 @@ page_header("Dashboard");
       <?php endif; ?>
     </aside>
 
-    <section class="panel">
+    <section class="panel" x-data='dashDayModal(<?= htmlspecialchars(json_encode($eventsJsonByDay, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT), ENT_QUOTES, "UTF-8") ?>, <?= json_encode(csrf_token()) ?>)'>
       <div class="monthbar">
         <div class="month-left">
-          <a class="navbtn" href="<?= h(BASE_URL) ?>/dashboard.php?ym=<?= h($prevYm) ?><?= $selectedIds ? '&'.http_build_query(['cal'=>$selectedIds]) : '' ?>">‹</a>
-          <a class="navbtn" href="<?= h(BASE_URL) ?>/dashboard.php?ym=<?= h($todayYm) ?><?= $selectedIds ? '&'.http_build_query(['cal'=>$selectedIds]) : '' ?>">Today</a>
-          <a class="navbtn" href="<?= h(BASE_URL) ?>/dashboard.php?ym=<?= h($nextYm) ?><?= $selectedIds ? '&'.http_build_query(['cal'=>$selectedIds]) : '' ?>">›</a>
+          <a class="navbtn" href="<?= h(BASE_URL) ?>/dashboard.php?ym=<?= h($prevYm) ?><?= h($calQs) ?>">‹</a>
+          <a class="navbtn" href="<?= h(BASE_URL) ?>/dashboard.php?ym=<?= h($todayYm) ?><?= h($calQs) ?>">Today</a>
+          <a class="navbtn" href="<?= h(BASE_URL) ?>/dashboard.php?ym=<?= h($nextYm) ?><?= h($calQs) ?>">›</a>
           <div class="month-title"><?= h($monthStart->format('F Y')) ?></div>
         </div>
         <div class="hint">Grid: <?= h($gridStart->format('M j')) ?> – <?= h($gridEnd->format('M j, Y')) ?></div>
@@ -299,7 +349,7 @@ page_header("Dashboard");
             $events = $eventsByDay[$dayKey] ?? [];
             $maxShow = 3;
         ?>
-          <div class="day <?= $isToday ? 'today' : '' ?>">
+          <div class="day <?= $isToday ? 'today' : '' ?>" role="button" tabindex="0" style="cursor:pointer" @click="openDay('<?= h($dayKey) ?>')" @keydown.enter.prevent="openDay('<?= h($dayKey) ?>')">
             <div class="day-num">
               <div class="num <?= $inMonth ? '' : 'muted' ?>"><?= h($cur->format('j')) ?></div>
               <div class="muted" style="font-size:12px;">
@@ -322,7 +372,7 @@ page_header("Dashboard");
               </div>
               <?php if (count($events) > $maxShow): ?>
                 <div class="more">
-                  <a href="<?= h(BASE_URL) ?>/check_availability.php?date=<?= h($dayKey) ?>">+<?= h((string)(count($events)-$maxShow)) ?> more</a>
+                  <a onclick="event.stopPropagation()" href="<?= h(BASE_URL) ?>/check_availability.php?date=<?= h($dayKey) ?>">+<?= h((string)(count($events)-$maxShow)) ?> more</a>
                 </div>
               <?php endif; ?>
             <?php endif; ?>
@@ -333,6 +383,204 @@ page_header("Dashboard");
           endwhile;
         ?>
       </div>
+
+      <!-- Day details modal -->
+      <div class="rs-modal-backdrop" x-cloak x-show="open" @keydown.escape.window="close()" @click.self="close()">
+        <div class="rs-modal" role="dialog" aria-modal="true" aria-label="Day details">
+          <div class="rs-modal__head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div>
+              <div style="font-weight:800;font-size:16px;">Events — <span x-text="dayPretty"></span></div>
+              <div class="muted" style="font-size:12px;margin-top:2px;" x-text="events.length ? (events.length + ' event(s)') : 'No events'"></div>
+            </div>
+            <button class="icon-btn" type="button" @click="close()" aria-label="Close">
+              <span style="font-size:18px;line-height:1;">×</span>
+            </button>
+          </div>
+
+          <div class="rs-modal__body">
+            <template x-if="!events.length">
+              <div class="muted">No events on this date for the selected calendars.</div>
+            </template>
+
+            <div style="display:grid;gap:10px;" x-show="events.length">
+              <template x-for="ev in events" :key="ev.id">
+                <div class="card" style="border-radius:16px;">
+                  <div class="card-body" style="padding:12px;">
+                    <div style="display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap;">
+                      <div style="min-width:240px;flex:1;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                          <span class="dot" :style="'background:' + (ev.calendar_color || '#3b82f6')"></span>
+                          <div style="font-weight:800;" x-text="ev.title || '(No title)'"></div>
+                        </div>
+                        <div class="muted" style="margin-top:4px;" x-text="ev.start_label + (ev.end_label ? (' – ' + ev.end_label) : '')"></div>
+                        <div class="muted" style="margin-top:4px;" x-text="ev.calendar_name + ' • ' + ev.status + ' • ' + ev.source"></div>
+                        <template x-if="ev.notes">
+                          <div style="margin-top:8px;white-space:pre-wrap;" x-text="ev.notes"></div>
+                        </template>
+                      </div>
+
+                      <div style="display:flex;gap:8px;align-items:flex-start;">
+                        <button class="dash-btn" type="button" @click="startEdit(ev)">Edit</button>
+                        <button class="dash-btn" type="button" @click="deleteEvent(ev)">Delete</button>
+                      </div>
+                    </div>
+
+                    <!-- Inline editor -->
+                    <div x-show="editingId === ev.id" style="margin-top:12px;border-top:1px solid rgba(255,255,255,.10);padding-top:12px;">
+                      <div class="form-grid">
+                        <div class="span-2">
+                          <label>Title</label>
+                          <input type="text" x-model="edit.title" />
+                        </div>
+                        <div>
+                          <label>Status</label>
+                          <select x-model="edit.status">
+                            <option value="busy">Busy</option>
+                            <option value="tentative">Tentative</option>
+                            <option value="available">Available</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label>All day</label>
+                          <select x-model="edit.is_all_day">
+                            <option value="1">Yes</option>
+                            <option value="0">No</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label>Date</label>
+                          <input type="date" x-model="edit.date" />
+                        </div>
+                        <div x-show="String(edit.is_all_day) !== '1'">
+                          <label>Start</label>
+                          <input type="time" x-model="edit.start_time" />
+                        </div>
+                        <div x-show="String(edit.is_all_day) !== '1'">
+                          <label>End</label>
+                          <input type="time" x-model="edit.end_time" />
+                        </div>
+                        <div class="span-2">
+                          <label>Notes</label>
+                          <textarea rows="4" x-model="edit.notes"></textarea>
+                        </div>
+                      </div>
+
+                      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+                        <button class="dash-btn primary" type="button" @click="saveEdit(ev)">Save changes</button>
+                        <button class="dash-btn" type="button" @click="cancelEdit()">Cancel</button>
+                        <div class="muted" style="font-size:12px;" x-text="editError"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <div class="rs-modal__foot" style="display:flex;justify-content:flex-end;gap:10px;">
+            <button class="dash-btn" type="button" @click="close()">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        function dashDayModal(eventsByDay, csrf) {
+          return {
+            open: false,
+            day: '',
+            eventsByDay: eventsByDay || {},
+            events: [],
+            editingId: null,
+            edit: {},
+            editError: '',
+            get dayPretty() {
+              if (!this.day) return '';
+              try {
+                const d = new Date(this.day + 'T00:00:00');
+                return d.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+              } catch(e) { return this.day; }
+            },
+            openDay(dayKey) {
+              this.day = dayKey;
+              this.events = (this.eventsByDay[dayKey] || []).slice();
+              this.open = true;
+              this.cancelEdit();
+            },
+            close() {
+              this.open = false;
+              this.cancelEdit();
+            },
+            startEdit(ev) {
+              this.editError = '';
+              this.editingId = ev.id;
+              this.edit = {
+                title: ev.title || '',
+                notes: ev.notes || '',
+                status: ev.status || 'busy',
+                is_all_day: String(ev.is_all_day ? 1 : 0),
+                date: ev.date || this.day,
+                start_time: ev.start_time || '19:00',
+                end_time: ev.end_time || '22:00',
+              };
+            },
+            cancelEdit() {
+              this.editingId = null;
+              this.edit = {};
+              this.editError = '';
+            },
+            async saveEdit(ev) {
+              this.editError = '';
+              try {
+                const payload = {
+                  action: 'update',
+                  id: ev.id,
+                  title: this.edit.title,
+                  notes: this.edit.notes,
+                  status: this.edit.status,
+                  is_all_day: Number(this.edit.is_all_day) ? 1 : 0,
+                  date: this.edit.date,
+                  start_time: this.edit.start_time,
+                  end_time: this.edit.end_time,
+                };
+
+                const res = await fetch(BASE_URL + '/api/calendar_event.php', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                  },
+                  body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (!json.success) throw new Error(json.error || 'Save failed');
+
+                // simplest: reload so the month grid chips match the DB
+                location.reload();
+              } catch (e) {
+                this.editError = e.message || String(e);
+              }
+            },
+            async deleteEvent(ev) {
+              if (!confirm('Delete this event?')) return;
+              try {
+                const res = await fetch(BASE_URL + '/api/calendar_event.php', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                  },
+                  body: JSON.stringify({ action: 'delete', id: ev.id })
+                });
+                const json = await res.json();
+                if (!json.success) throw new Error(json.error || 'Delete failed');
+                location.reload();
+              } catch (e) {
+                alert(e.message || String(e));
+              }
+            }
+          }
+        }
+      </script>
     </section>
 
   </div>
