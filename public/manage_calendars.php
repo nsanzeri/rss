@@ -280,7 +280,7 @@ page_header("Manage Calendars");
   margin: 0 0 6px;
 }
 .mc-field .in, .mc-field select, .mc-field textarea{
-  width:100%;
+ /* width:100%; */
 }
 
 /* Checkbox label tight to the right */
@@ -378,7 +378,7 @@ page_header("Manage Calendars");
           <div class="mc-grid-4">
             <div class="mc-field">
               <label>Color</label>
-              <input class="in" type="color" name="calendar_color" value="#3b82f6"/>
+              <input class="in color-picker" type="color" name="calendar_color" value="#3b82f6"/>
             </div>
 
             <div class="mc-field">
@@ -506,7 +506,7 @@ page_header("Manage Calendars");
 
               <div class="mc-field">
                 <label>Color</label>
-                <input class="in" type="color" name="calendar_color" value="<?= h($c['calendar_color'] ?? '#3b82f6') ?>"/>
+                <input class="in color-picker" type="color" name="calendar_color" value="<?= h($c['calendar_color'] ?? '#3b82f6') ?>"/>
               </div>
 
               <div class="mc-field">

@@ -41,7 +41,34 @@ a{ color: inherit; }
 /* ------------------------------
    Base controls
 ------------------------------ */
-input:not([type="checkbox"]):not([type="radio"]),
+/* ==============================
+   Color Picker (Round Swatch)
+   ============================== */
+.color-picker {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.35);
+  cursor: pointer;
+  background: transparent;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.15),
+    inset 0 0 0 1px rgba(255,255,255,0.2);
+}
+.color-picker::-webkit-color-swatch-wrapper { padding: 0; }
+.color-picker::-webkit-color-swatch { border: none; border-radius: 50%; }
+.color-picker::-moz-color-swatch { border: none; border-radius: 50%; }
+.color-picker:hover { transform: scale(1.05); }
+.color-picker:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgba(99,102,241,0.7),
+    inset 0 0 0 1px rgba(255,255,255,0.25);
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
 select,
 textarea{
   width: 100%;
@@ -127,6 +154,8 @@ button{ font: inherit; }
   text-decoration:none;
 }
 .icon-btn:hover{ box-shadow: var(--shadow-sm); }
+
+
 
 /* Cards + layout helpers */
 .card{

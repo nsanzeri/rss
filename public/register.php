@@ -20,7 +20,8 @@ page_header("Create account");
   <div class="auth-card">
     <?php if ($err): ?><div class="alert"><?= h($err) ?></div><?php endif; ?>
     
-    <h2 class="auth-title">Create account</h2>
+    <h2 class="auth-title">Welcome to Ready Set Shows.<br>
+Sign up to continue.</h2>
   <div class="provider-stack" aria-label="Continue with">
       <a class="provider-btn" href="<?= h(BASE_URL) ?>/google_login.php">
         <span class="provider-ico" aria-hidden="true">G</span>
