@@ -1,5 +1,7 @@
 <?php
-require_once __DIR__ . "/../core/bootstrap.php";
+require_once __DIR__ . '/_layout.php';
+$HIDE_NAV = empty($_SESSION["user_id"]);
+page_header('request');
 
 // Public booking request (first pass)
 // Flow:

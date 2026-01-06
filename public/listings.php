@@ -1,5 +1,7 @@
 <?php
-require_once __DIR__ . "/../core/bootstrap.php";
+require_once __DIR__ . '/_layout.php';
+$HIDE_NAV = empty($_SESSION["user_id"]);
+page_header('search');
 
 // Public "This Week" listings page
 $error = '';
@@ -82,24 +84,8 @@ $title = "This Week — Ready Set Shows";
   </style>
 </head>
 <body class="public">
-  <header class="site-header">
-    <div class="brandbar">
-      <div class="brandbar-inner">
-        <a href="<?= h(BASE_URL) ?>/index.php" class="brand">
-          <span class="logo-square">RSS</span>
-          <span class="brand-name">Ready Set Shows</span>
-        </a>
-        <nav class="top-actions">
-          <a class="pill" href="<?= h(BASE_URL) ?>/search.php">Search</a>
-          <a class="pill" href="<?= h(BASE_URL) ?>/pricing.php">Pricing</a>
-          <a class="pill" href="<?= h(BASE_URL) ?>/login.php">Log In</a>
-        </nav>
-      </div>
-    </div>
-  </header>
-
-  <main class="container" style="max-width: 1160px; margin: 18px auto; padding: 0 16px;">
-
+  <!-- main class="container" style="max-width: 1160px; margin: 18px auto; padding: 0 16px;"-->
+<main>
     <div class="week-head">
       <div>
         <h1>What’s happening this week</h1>

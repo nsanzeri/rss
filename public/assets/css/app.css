@@ -166,6 +166,18 @@ button{ font: inherit; }
   padding: 20px;
 }
 
+.card-title{
+   display: block;
+   font-size: 1.5em;
+   margin-block-start: 0.83em;
+   margin-block-end: 0.83em;
+   margin-inline-start: 0px;
+   margin-inline-end: 0px;
+   margin: 0px;
+   font-weight: bold;
+   unicode-bidi: isolate;
+}
+
 /* Use when a card needs edge-to-edge content */
 .card--flush{ padding: 0; }
 

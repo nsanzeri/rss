@@ -92,7 +92,8 @@ function page_header(string $title): void {
 
     <?php if ($hideNav): ?>
     <div class="app-shell">
-      <main class="content" style="padding-top:2.5rem;">
+      <!-- main class="content" style="padding-top:2.5rem;" -->
+      <main>
     <?php else: ?>
     <!-- Mobile menu panel (opens below header; no internal header) -->
     <div class="mobile-drawer" id="mobileDrawer" aria-hidden="true">
@@ -127,7 +128,19 @@ function page_header(string $title): void {
       <!-- Row 1: centered product title (VERY TOP LINE) -->
       <div class="topbar-row topbar-row--brand">
         <div class="brand-center" aria-label="Ready Set Shows">Ready Set Shows</div>
+		   <?php if ($hideNav): ?>
+		    <nav class="landing-nav" aria-label="Primary">
+		      <a href="<?= h(BASE_URL) ?>/register.php?intent=band">List Your Band</a>
+		      <a href="<?= h(BASE_URL) ?>/register.php?intent=venue">List Your Venue</a>
+		      <a href="<?= h(BASE_URL) ?>/pricing.php">Pricing</a>
+		      <span class="pill" style="opacity:.0; border-color:transparent;">&nbsp;</span>
+		      <a class="pill" href="<?= h(BASE_URL) ?>/search.php">Search</a>
+		      <a class="pill" href="<?= h(BASE_URL) ?>/login.php">Log In</a>
+		      <a class="pill" href="<?= h(BASE_URL) ?>/register.php" style="background: rgba(124,58,237,0.22); border-color: rgba(124,58,237,0.42);">Sign Up</a>
+		    </nav>
+	     <?php endif; ?>
       </div>
+      
 
       <?php if (!$hideNav): ?>
       <!-- Row 2: emblem + main modules + user/logout -->

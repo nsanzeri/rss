@@ -1,6 +1,7 @@
 <?php
-$HIDE_NAV = false;
-require_once __DIR__ . "/_layout.php";
+require_once __DIR__ . '/_layout.php';
+$HIDE_NAV = empty($_SESSION["user_id"]);
+page_header('search');
 
 // Casting request context (if user started a request and is now browsing)
 $casting = $_SESSION['booking_request_draft'] ?? null;
@@ -181,54 +182,48 @@ if (!$search_error) {
 $has_context = (!$search_error && ($mode_anywhere || $zip !== ''));
 
 $title = "Search — Ready Set Shows";
-?><!doctype html>
+?><!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title><?= h($title) ?></title>
   <link rel="stylesheet" href="<?= h(BASE_URL) ?>/assets/css/app.css" />
+    <style>
+    /* Landing search row */
+    .search-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      align-items:flex-end;
+    }
+    .search-row > div{min-width:180px; flex:1;}
+    .search-row .search-btn{white-space:nowrap;}
+    .search-row .when-date{max-width:180px;}
+    </style>
 </head>
-<body class="public search-page">
+<body>
 
-  <header class="site-header">
-    <div class="brandbar">
-      <div class="brandbar-inner">
-        <a href="<?= h(BASE_URL) ?>/index.php" class="brand">
-          <span class="logo-square">RSS</span>
-          <span class="brand-name">Ready Set Shows</span>
-        </a>
-        <nav class="top-actions">
-          <a class="pill" href="<?= h(BASE_URL) ?>/pricing.php">Pricing</a>
-          <a class="pill" href="<?= h(BASE_URL) ?>/login.php">Log In</a>
-        </nav>
-      </div>
-    </div>
-  </header>
+  <!-- main class="container" style="max-width: 1160px; margin: 18px auto; padding: 0 16px;"-->
+  <main>
 
-  <main class="container" style="max-width: 1160px; margin: 18px auto; padding: 0 16px;">
-
-    <section class="search-shell">
-      <form class="search-filters" method="get" action="<?= h(BASE_URL) ?>/search.php">
-        <div class="sf-row">
-          <div class="sf-field">
-            <label>When</label>
-            <input name="when" placeholder="Any date" value="<?= h($when) ?>" />
+      <div class="search-rail">
+        <form class="search-grid search-row" method="get" action="<?= h(BASE_URL) ?>/search.php">
+          <div>
+            <label>Artist\Venue Name</label>
+            <input name="q" placeholder="Band, venue, genre…" value="<?= h($q) ?>" />
           </div>
-          <div class="sf-field">
+          <div>
             <label>Where</label>
-            <input name="where" placeholder="ZIP" value="<?= h($where) ?>" />
+            <input name="where" placeholder="ZIP code" value="<?= h($where) ?>" />
           </div>
-          <div class="sf-field">
+          <div>
             <label>Radius</label>
             <select name="radius">
               <option value="0" <?= $radius===0 ? 'selected' : '' ?>>Anywhere</option>
               <?php foreach ([5,10,25,50,100] as $r): ?>
-                <option value="<?= (int)$r ?>" <?= $radius===$r ? 'selected' : '' ?>><?= (int)$r ?> mi</option>
+                <option value="<?= (int)$r ?>" <?= $radius===$r ? 'selected' : '' ?>><?= (int)$r ?> miles</option>
               <?php endforeach; ?>
             </select>
           </div>
-          <div class="sf-field">
+          <div>
             <label>Type</label>
             <select name="type">
               <option value="all" <?= $type==='all' ? 'selected' : '' ?>>All</option>
@@ -236,13 +231,13 @@ $title = "Search — Ready Set Shows";
               <option value="venue" <?= $type==='venue' ? 'selected' : '' ?>>Venues</option>
             </select>
           </div>
-          <div class="sf-field sf-grow">
-            <label>What</label>
-            <input name="q" placeholder="Band, venue, genre…" value="<?= h($q) ?>" />
+          <div>
+            <label>When</label>
+            <input type="date" name="when" value="<?= h($when) ?>" class="when-date" />
           </div>
-          <button class="sf-btn" type="submit">Search</button>
-        </div>
-      </form>
+          <button class="search-btn" type="submit">Search →</button>
+        </form>
+      </div>
 
       <div class="search-meta">
   <?php if ($has_context): ?>

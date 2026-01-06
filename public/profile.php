@@ -1,5 +1,7 @@
 <?php
-require_once __DIR__ . "/../core/bootstrap.php";
+require_once __DIR__ . '/_layout.php';
+$HIDE_NAV = empty($_SESSION["user_id"]);
+page_header('search');
 
 // Public profile page (Discovery v1)
 $id = (int)($_GET['id'] ?? 0);
@@ -131,22 +133,10 @@ $title = $profile ? ($profile['name'] ?? 'Profile') : "Profile";
 </style>
 </head>
 <body class="public">
-  <header class="site-header">
-    <div class="brandbar">
-      <div class="brandbar-inner">
-        <a href="<?= h(BASE_URL) ?>/index.php" class="brand">
-          <span class="logo-square">RSS</span>
-          <span class="brand-name">Ready Set Shows</span>
-        </a>
-        <nav class="top-actions">
-          <a class="pill" href="<?= h(BASE_URL) ?>/index.php">Search</a>
-          <a class="pill" href="<?= h(BASE_URL) ?>/login.php">Log In</a>
-        </nav>
-      </div>
-    </div>
-  </header>
 
-  <main class="container" style="max-width: 980px; margin: 22px auto; padding: 0 16px;">
+
+  <!--main class="container" style="max-width: 980px; margin: 22px auto; padding: 0 16px;"-->
+<main>
     <?php if ($error): ?>
       <div class="alert"><?= h($error) ?></div>
     <?php else: ?>
