@@ -329,9 +329,9 @@ try {
         COALESCE(r.event_date, '2099-12-31') ASC,
         i.sent_at DESC
     ");
-		echo '<pre>';
+/* 		echo '<pre>';
 		$stmt->debugDumpParams();
-		echo '</pre>';
+		echo '</pre>'; */
 		$stmt->execute([':uid' => $u['id']]);
 		$rows = $stmt->fetchAll() ?: [];
 	} else {
@@ -351,9 +351,9 @@ try {
         COALESCE(b.event_date, '2099-12-31') ASC,
         b.created_at DESC
     ");
-		echo '<pre>';
+/* 		echo '<pre>';
 		$stmt->debugDumpParams();
-		echo '</pre>';
+		echo '</pre>'; */
 		$stmt->execute($params);
 		$rows = $stmt->fetchAll() ?: [];
 	}
