@@ -43,6 +43,74 @@ if ($where !== '' || $q !== '' || $when !== '') {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><?= h(APP_NAME) ?> • Find live music, venues, and dates</title>
   <link rel="stylesheet" href="<?= h(BASE_URL) ?>/assets/css/app.css" />
+  <style>
+    /* Landing search row */
+    .search-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      align-items:flex-end;
+    }
+    .search-row > div{min-width:180px; flex:1;}
+    .search-row .search-btn{white-space:nowrap;}
+    .search-row .when-date{max-width:180px;}
+
+    /* Parallax sections */
+    .parallax{
+      position:relative;
+      min-height:70vh;
+      display:flex;
+      align-items:center;
+      padding:70px 0;
+      overflow:hidden;
+      background-attachment: fixed;
+      background-size: cover;
+      background-position: center;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    @media (max-width: 900px){
+      .parallax{ background-attachment: scroll; min-height: auto; padding:50px 0;}
+    }
+    .parallax::before{
+      content:"";
+      position:absolute; inset:0;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(1px);
+    }
+    .parallax .parallax-inner{
+      position:relative;
+      width:min(1100px, calc(100% - 32px));
+      margin:0 auto;
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:22px;
+      align-items:center;
+    }
+    @media (max-width: 900px){
+      .parallax .parallax-inner{ grid-template-columns:1fr; }
+    }
+    .parallax .panel{
+      background: rgba(10,10,10,0.55);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 18px;
+      padding: 18px;
+    }
+    .parallax .kicker{letter-spacing:.12em; text-transform:uppercase; font-size:.78rem; opacity:.85;}
+    .parallax h2{margin:6px 0 10px;}
+    .parallax p{margin:0 0 12px; line-height:1.55;}
+    .parallax .cta-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;}
+    .parallax .cta-row a{display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius: 999px; border:1px solid rgba(255,255,255,0.18);}
+    .parallax .cta-row a.primary{background: rgba(99,102,241,0.18); border-color: rgba(99,102,241,0.35);}
+    .parallax .bullets{display:grid; gap:10px;}
+    .parallax .bullet{display:flex; gap:10px; align-items:flex-start;}
+    .parallax .dot{width:10px; height:10px; border-radius:999px; background: rgba(255,255,255,0.75); margin-top:6px; flex:0 0 auto;}
+    /* Section backgrounds (no external images needed) */
+    .p-listings{background-image: radial-gradient(1200px 600px at 20% 10%, rgba(99,102,241,.45), transparent 55%), radial-gradient(900px 500px at 80% 70%, rgba(16,185,129,.30), transparent 55%), linear-gradient(135deg, #0b1020, #05060a);}
+    .p-bookings{background-image: radial-gradient(1200px 600px at 70% 20%, rgba(236,72,153,.35), transparent 55%), radial-gradient(900px 500px at 25% 75%, rgba(245,158,11,.25), transparent 55%), linear-gradient(135deg, #120510, #05060a);}
+    .p-cal{background-image: radial-gradient(1200px 600px at 30% 15%, rgba(59,130,246,.40), transparent 55%), radial-gradient(900px 500px at 75% 80%, rgba(139,92,246,.30), transparent 55%), linear-gradient(135deg, #071226, #05060a);}
+    .p-tools{background-image: radial-gradient(1200px 600px at 60% 10%, rgba(34,197,94,.25), transparent 55%), radial-gradient(900px 500px at 20% 80%, rgba(148,163,184,.20), transparent 55%), linear-gradient(135deg, #081018, #05060a);}
+  </style>
+
 </head>
 <body class="landing">
 
@@ -69,9 +137,9 @@ if ($where !== '' || $q !== '' || $when !== '') {
       <p class="hero-sub">Search what’s happening, then follow the trail. If you’re a band or venue, listing takes minutes.</p>
 
       <div class="search-rail">
-        <form class="search-grid" method="get" action="<?= h(BASE_URL) ?>/search.php">
+        <form class="search-grid search-row" method="get" action="<?= h(BASE_URL) ?>/search.php">
           <div>
-            <label>What</label>
+            <label>Artist\Venue Name</label>
             <input name="q" placeholder="Band, venue, genre…" value="<?= h($q) ?>" />
           </div>
           <div>
@@ -97,7 +165,7 @@ if ($where !== '' || $q !== '' || $when !== '') {
           </div>
           <div>
             <label>When</label>
-            <input name="when" placeholder="Any date (optional)" value="<?= h($when) ?>" />
+            <input type="date" name="when" value="<?= h($when) ?>" class="when-date" />
           </div>
           <button class="search-btn" type="submit">Search →</button>
         </form>
@@ -110,7 +178,93 @@ if ($where !== '' || $q !== '' || $when !== '') {
       </div>
     </section>
 
-    <section class="marketing" id="learn">
+    
+    <!-- Scroll story: what Ready Set Shows does -->
+    <section class="parallax p-listings" aria-label="Listings">
+      <div class="parallax-inner">
+        <div class="panel">
+          <div class="kicker">Listings</div>
+          <h2>Find artists and venues that actually fit the gig</h2>
+          <p>Search by name and location, then jump straight to profiles with photos, YouTube, and contact-ready info. No dead ends, no spreadsheets.</p>
+          <div class="cta-row">
+            <a class="primary" href="<?= h(BASE_URL) ?>/search.php">Browse listings →</a>
+            <a href="<?= h(BASE_URL) ?>/pricing.php">See plans</a>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="bullets">
+            <div class="bullet"><span class="dot"></span><div><b>Profiles</b><div class="muted">Photos + YouTube links + tight bio.</div></div></div>
+            <div class="bullet"><span class="dot"></span><div><b>Location-aware</b><div class="muted">ZIP + radius filtering.</div></div></div>
+            <div class="bullet"><span class="dot"></span><div><b>Fast contact</b><div class="muted">Booking flow (no hunting for emails).</div></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="parallax p-bookings" aria-label="Bookings">
+      <div class="parallax-inner">
+        <div class="panel">
+          <div class="kicker">Bookings</div>
+          <h2>Turn “Are you available?” into a trackable request</h2>
+          <p>Capture booking requests, respond, and keep a clean status trail. You’ll be able to measure response time as a real metric—not a vibe.</p>
+          <div class="cta-row">
+            <a class="primary" href="<?= h(BASE_URL) ?>/public_availability.php">Share availability →</a>
+            <a href="<?= h(BASE_URL) ?>/login.php">Try Ops</a>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="bullets">
+            <div class="bullet"><span class="dot"></span><div><b>Request → status</b><div class="muted">Inquiry, pending, confirmed.</div></div></div>
+            <div class="bullet"><span class="dot"></span><div><b>Follow-up ready</b><div class="muted">Central place for conversations.</div></div></div>
+            <div class="bullet"><span class="dot"></span><div><b>Response time</b><div class="muted">Measured from first response.</div></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="parallax p-cal" aria-label="Calendar management">
+      <div class="parallax-inner">
+        <div class="panel">
+          <div class="kicker">Calendar Management</div>
+          <h2>Import, overlay, and block dates—without timezone pain</h2>
+          <p>Link external calendars, import a date range, and add manual blocks. Edit and delete blocks right from the dashboard calendar widget.</p>
+          <div class="cta-row">
+            <a class="primary" href="<?= h(BASE_URL) ?>/manage_calendars.php">Manage calendars →</a>
+            <a href="<?= h(BASE_URL) ?>/dashboard.php">Open dashboard</a>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="bullets">
+            <div class="bullet"><span class="dot"></span><div><b>ICS import</b><div class="muted">Bring in the dates you want.</div></div></div>
+            <div class="bullet"><span class="dot"></span><div><b>Manual blocks</b><div class="muted">Busy/available holds.</div></div></div>
+            <div class="bullet"><span class="dot"></span><div><b>Widget editing</b><div class="muted">Change entries from the calendar view.</div></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="parallax p-tools" aria-label="Tools">
+      <div class="parallax-inner">
+        <div class="panel">
+          <div class="kicker">Tools</div>
+          <h2>Little utilities that save real hours</h2>
+          <p>From availability checks to pretty printing and imports—tools are the backbone while the marketplace grows.</p>
+          <div class="cta-row">
+            <a class="primary" href="<?= h(BASE_URL) ?>/pricing.php">Explore tools →</a>
+            <a href="<?= h(BASE_URL) ?>/register.php?intent=band">List your band</a>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="bullets">
+            <div class="bullet"><span class="dot"></span><div><b>Creator-first</b><div class="muted">Built for working musicians.</div></div></div>
+            <div class="bullet"><span class="dot"></span><div><b>Ops-ready</b><div class="muted">Booking + calendar workflows.</div></div></div>
+            <div class="bullet"><span class="dot"></span><div><b>Ship fast</b><div class="muted">Incremental improvements weekly.</div></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+<section class="marketing" id="learn">
       <div class="section">
         <div class="section-inner">
           <div>
