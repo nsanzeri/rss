@@ -3,7 +3,7 @@ require_once __DIR__ . "/_layout.php";
 $u = require_login();
 
 $tab = $_GET['tab'] ?? 'pipeline';
-$allowed = ['pipeline','inquiries','pending','confirmed'];
+$allowed = ['pipeline','requests','inquiries','pending','confirmed'];
 if (!in_array($tab, $allowed, true)) $tab = 'pipeline';
 
 $pdo = db();
@@ -16,6 +16,10 @@ function booking_status_label(string $s): string {
 		'pending' => 'Pending',
 		'confirmed' => 'Confirmed',
 		'canceled' => 'Canceled',
+		'accepted' => 'Accepted',
+		'declined' => 'Declined',
+		'expired' => 'Expired',
+		'cancelled' => 'Cancelled',
 		default => ucfirst($s),
 	};
 }
@@ -37,6 +41,100 @@ $action = $_POST['action'] ?? '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	try {
 		csrf_validate($_POST['csrf'] ?? '');
+		
+		
+		// Respond to incoming booking invite (recipient-side)
+		if ($action === 'respond_invite') {
+			$invite_id = (int)($_POST['invite_id'] ?? 0);
+			$decision = $_POST['decision'] ?? '';
+			if ($invite_id <= 0) throw new Exception("Missing invite id.");
+			if (!in_array($decision, ['accepted','declined'], true)) throw new Exception("Invalid decision.");
+			
+			$pdo->beginTransaction();
+			try {
+				// ownership check: invite must target one of my profiles
+				$stmt = $pdo->prepare("
+					SELECT i.*, r.event_title, r.event_date, r.start_time, r.end_time,
+					       r.venue_name, r.venue_address, r.city, r.state, r.zip,
+					       r.contact_name, r.contact_email, r.contact_phone, r.notes,
+					       r.budget_max
+					FROM booking_invites i
+					JOIN booking_requests r ON r.id = i.request_id
+					JOIN profiles p ON p.id = i.target_profile_id
+					WHERE i.id = ? AND p.user_id = ? AND p.deleted_at IS NULL
+					LIMIT 1
+				");
+				$stmt->execute([$invite_id, $u['id']]);
+				$inv = $stmt->fetch();
+				if (!$inv) throw new Exception("Invite not found.");
+				
+				// update invite status
+				$upd = $pdo->prepare("UPDATE booking_invites SET status=?, responded_at=NOW() WHERE id=? LIMIT 1");
+				$upd->execute([$decision, $invite_id]);
+				
+				// If accepted, create a booking (idempotent-ish)
+				if ($decision === 'accepted') {
+					// avoid duplicates: same user/profile/date/title/contact
+					$chk = $pdo->prepare("
+						SELECT id FROM bookings
+						WHERE user_id=? AND profile_id <=> ? AND deleted_at IS NULL
+						  AND COALESCE(event_date,'0000-00-00') <=> COALESCE(?, '0000-00-00')
+						  AND event_title = ?
+						  AND COALESCE(contact_email,'') = COALESCE(?, '')
+						LIMIT 1
+					");
+					$chk->execute([
+							$u['id'],
+							$inv['target_profile_id'],
+							$inv['event_date'] ?? null,
+							$inv['event_title'] ?? 'Booking Request',
+							$inv['contact_email'] ?? null,
+					]);
+					$existingId = (int)($chk->fetchColumn() ?: 0);
+					
+					if ($existingId <= 0) {
+						$ins = $pdo->prepare("
+							INSERT INTO bookings
+							(user_id, profile_id, status, event_title, event_date, start_time, end_time,
+							 venue_name, venue_address, city, state, zip,
+							 contact_name, contact_email, contact_phone, fee, notes)
+							VALUES
+							(:uid, :pid, 'pending', :title, :edate, :st, :et,
+							 :vname, :vaddr, :city, :state, :zip,
+							 :cname, :cemail, :cphone, :fee, :notes)
+						");
+						$notes = trim(
+								"From booking request #" . (int)$inv['request_id'] . "\n" .
+								((string)($inv['notes'] ?? ''))
+								);
+						$ins->execute([
+								':uid' => $u['id'],
+								':pid' => $inv['target_profile_id'],
+								':title' => $inv['event_title'] ?? 'Booking Request',
+								':edate' => $inv['event_date'] ?? null,
+								':st' => $inv['start_time'] ?? null,
+								':et' => $inv['end_time'] ?? null,
+								':vname' => $inv['venue_name'] ?? null,
+								':vaddr' => $inv['venue_address'] ?? null,
+								':city' => $inv['city'] ?? null,
+								':state' => $inv['state'] ?? null,
+								':zip' => $inv['zip'] ?? null,
+								':cname' => $inv['contact_name'] ?? null,
+								':cemail' => $inv['contact_email'] ?? null,
+								':cphone' => $inv['contact_phone'] ?? null,
+								':fee' => $inv['budget_max'] ?? null,
+								':notes' => $notes ?: null,
+						]);
+					}
+				}
+				
+				$pdo->commit();
+				$flash = ($decision === 'accepted') ? 'Invite accepted.' : 'Invite declined.';
+			} catch (Throwable $e) {
+				$pdo->rollBack();
+				throw $e;
+			}
+		}
 		
 		if ($action === 'create_booking') {
 			$status = post_str('status') ?: normalize_status_for_tab($tab);
@@ -190,24 +288,75 @@ if ($tab === 'inquiries') {
 
 $rows = [];
 try {
-	$stmt = $pdo->prepare("
-    SELECT b.*, p.name AS profile_name
-    FROM bookings b
-    LEFT JOIN profiles p ON p.id = b.profile_id
-    WHERE $where
-    ORDER BY
-      CASE b.status
-        WHEN 'inquiry' THEN 1
-        WHEN 'pending' THEN 2
-        WHEN 'confirmed' THEN 3
-        WHEN 'canceled' THEN 4
-        ELSE 9
-      END,
-      COALESCE(b.event_date, '2099-12-31') ASC,
-      b.created_at DESC
-  ");
-	$stmt->execute($params);
-	$rows = $stmt->fetchAll() ?: [];
+	if ($tab === 'requests') {
+		// Incoming booking requests (invites targeting any of my profiles)
+		$stmt = $pdo->prepare("
+      SELECT
+        i.id AS invite_id,
+        i.request_id,
+        i.status,
+        i.sent_at AS created_at,
+        p.name AS profile_name,
+        r.event_title,
+        r.event_date,
+        r.start_time,
+        r.end_time,
+        r.venue_name,
+        r.venue_address,
+        r.city,
+        r.state,
+        r.zip,
+        r.contact_name,
+        r.contact_email,
+        r.contact_phone,
+        r.budget_max AS fee,
+        CONCAT_WS('\n', r.notes, i.message) AS notes
+      FROM booking_invites i
+      JOIN booking_requests r ON r.id = i.request_id
+      JOIN profiles p ON p.id = i.target_profile_id
+      WHERE p.user_id = :uid
+        AND p.deleted_at IS NULL
+        AND r.status = 'open'
+      ORDER BY
+        CASE i.status
+          WHEN 'pending' THEN 1
+          WHEN 'accepted' THEN 2
+          WHEN 'declined' THEN 3
+          WHEN 'expired' THEN 4
+          WHEN 'cancelled' THEN 5
+          ELSE 9
+        END,
+        COALESCE(r.event_date, '2099-12-31') ASC,
+        i.sent_at DESC
+    ");
+		echo '<pre>';
+		$stmt->debugDumpParams();
+		echo '</pre>';
+		$stmt->execute([':uid' => $u['id']]);
+		$rows = $stmt->fetchAll() ?: [];
+	} else {
+		$stmt = $pdo->prepare("
+      SELECT b.*, p.name AS profile_name
+      FROM bookings b
+      LEFT JOIN profiles p ON p.id = b.profile_id
+      WHERE $where
+      ORDER BY
+        CASE b.status
+          WHEN 'inquiry' THEN 1
+          WHEN 'pending' THEN 2
+          WHEN 'confirmed' THEN 3
+          WHEN 'canceled' THEN 4
+          ELSE 9
+        END,
+        COALESCE(b.event_date, '2099-12-31') ASC,
+        b.created_at DESC
+    ");
+		echo '<pre>';
+		$stmt->debugDumpParams();
+		echo '</pre>';
+		$stmt->execute($params);
+		$rows = $stmt->fetchAll() ?: [];
+	}
 } catch (Throwable $e) {
 	$rows = [];
 	if (!$error) {
@@ -216,7 +365,7 @@ try {
 	}
 }
 
-$editId = (int)($_GET['edit'] ?? 0);
+$editId = ($tab === 'requests') ? 0 : (int)($_GET['edit'] ?? 0);
 $editing = null;
 if ($editId > 0) {
 	foreach ($rows as $r) {
@@ -224,7 +373,7 @@ if ($editId > 0) {
 	}
 }
 
-$showNew = !empty($_GET['new']);
+$showNew = ($tab === 'requests') ? false : !empty($_GET['new']);
 
 page_header('Bookings');
 ?>
@@ -236,7 +385,9 @@ page_header('Bookings');
       <p class="muted" style="margin:0;">Track inquiries → pending → confirmed, with dates, contacts, and notes.</p>
     </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <?php if ($tab !== 'requests'): ?>
       <a class="dash-btn primary" href="<?= h(BASE_URL) ?>/bookings.php?tab=<?= h($tab) ?>&new=1">+ New booking</a>
+      <?php endif; ?>
     </div>
   </div>
 
@@ -475,7 +626,11 @@ page_header('Bookings');
       <?php endif; ?>
 
       <div class="muted" style="margin-top:12px;font-size:12px;">
+        <?php if ($tab !== 'requests'): ?>
         Setup: if you haven’t yet, run <code>scripts/create_bookings_and_profiles.sql</code> in your DB.
+        <?php else: ?>
+        These requests come from <code>booking_requests</code> and <code>booking_invites</code>.
+        <?php endif; ?>
       </div>
     </div>
   </div>
