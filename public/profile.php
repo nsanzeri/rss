@@ -23,6 +23,10 @@ try {
     FROM profiles p
     LEFT JOIN zipcodes z ON z.zip = p.zip
     WHERE p.id = ? AND p.is_active = 1
+      AND EXISTS (
+        SELECT 1 FROM user_calendars uc
+        WHERE uc.user_id = p.user_id AND uc.is_default = 1
+      )
     LIMIT 1
   ");
 	$stmt->execute([$id]);
@@ -36,6 +40,7 @@ try {
 	$photos = [];
 	$featured_videos = [];
 	$reviews = [];
+	$upcoming_shows = [];
 	$avg_rating = null;
 	$review_count = 0;
 	
@@ -66,6 +71,30 @@ try {
 			}
 		} catch (Throwable $e) {
 			// reviews optional
+		}
+
+		// Upcoming public shows (from the public calendar)
+		try {
+			$nowUtc = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+			$endUtc = $nowUtc->modify('+180 days');
+			$stmt = $pdo->prepare("
+        SELECT ce.start_utc, ce.title
+        FROM calendar_events ce
+        JOIN user_calendars uc ON uc.id = ce.calendar_id
+        WHERE uc.user_id = ? AND uc.is_default = 1
+          AND ce.status = 'busy'
+          AND ce.start_utc >= ? AND ce.start_utc < ?
+        ORDER BY ce.start_utc ASC
+        LIMIT 10
+      ");
+			$stmt->execute([
+				(int)$profile['user_id'],
+				$nowUtc->format('Y-m-d H:i:s'),
+				$endUtc->format('Y-m-d H:i:s'),
+			]);
+			$upcoming_shows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		} catch (Throwable $e) {
+			// optional
 		}
 	}
 	
@@ -189,6 +218,34 @@ $title = $profile ? ($profile['name'] ?? 'Profile') : "Profile";
           <?php else: ?>
             <div style="margin-top: 14px; color: rgba(15,23,42,0.72);">
               No bio yet.
+            </div>
+          <?php endif; ?>
+
+          <?php if (!empty($upcoming_shows)): ?>
+            <?php
+              $tzLocal = new DateTimeZone('America/Chicago');
+              $fmtShow = function($utc) use ($tzLocal) {
+                if (!$utc) return '';
+                try {
+                  $dt = new DateTimeImmutable((string)$utc, new DateTimeZone('UTC'));
+                  $dt = $dt->setTimezone($tzLocal);
+                  return $dt->format('D, M j • g:ia');
+                } catch (Throwable $e) { return ''; }
+              };
+            ?>
+            <div style="margin-top: 16px; border:1px solid rgba(15,23,42,0.10); border-radius:16px; padding: 12px; background: rgba(255,255,255,0.70);">
+              <div style="font-weight:700;">Upcoming shows</div>
+              <div style="margin-top:8px; display:grid; gap:8px;">
+                <?php foreach ($upcoming_shows as $s): ?>
+                  <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                    <div style="color: rgba(15,23,42,0.80);"><b><?= h($fmtShow($s['start_utc'] ?? null)) ?></b></div>
+                    <div style="color: rgba(15,23,42,0.78); flex: 1; text-align:right; min-width: 220px;">
+                      <?= h($s['title'] ?: 'Live music') ?>
+                    </div>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+              <div class="muted" style="margin-top:10px; font-size:12px;">From the public calendar for this profile.</div>
             </div>
           <?php endif; ?>
 

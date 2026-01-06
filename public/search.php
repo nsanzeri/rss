@@ -63,6 +63,10 @@ if (!$search_error) {
           NULL AS distance_miles
         FROM profiles p
         WHERE p.is_active = 1
+          AND EXISTS (
+            SELECT 1 FROM user_calendars uc
+            WHERE uc.user_id = p.user_id AND uc.is_default = 1
+          )
       ";
 			
 			$params = [];
@@ -117,6 +121,10 @@ if (!$search_error) {
           FROM profiles p
           JOIN zipcodes z ON z.zip = p.zip
           WHERE p.is_active = 1
+            AND EXISTS (
+              SELECT 1 FROM user_calendars uc
+              WHERE uc.user_id = p.user_id AND uc.is_default = 1
+            )
             AND z.lat BETWEEN :min_lat AND :max_lat
             AND z.lng BETWEEN :min_lng AND :max_lng
         ";

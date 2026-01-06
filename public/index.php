@@ -35,6 +35,68 @@ if ($where !== '' || $q !== '' || $when !== '') {
 	header("Location: " . BASE_URL . "/search.php?" . $qs);
 	exit;
 }
+
+// ---------------------------------------------------------------------
+// Homepage "flavor feed"
+// - Uses only calendar_events rows (no extra joins to external sources)
+// - Uses only public calendars (repurposed: user_calendars.is_default = 1)
+// - Pulls upcoming week, no duplicate profiles
+// ---------------------------------------------------------------------
+$flavor_bands = [];
+$flavor_venues = [];
+$flavor_error = '';
+
+try {
+	$pdo = db();
+	$nowUtc = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+	$endUtc = $nowUtc->modify('+7 days');
+
+	// Helper query: next event per profile within the window.
+	$sql = "
+    SELECT
+      p.id AS profile_id,
+      p.profile_type,
+      p.name,
+      COALESCE(p.city, z.city) AS city,
+      COALESCE(p.state, z.state) AS state,
+      p.zip,
+      MIN(ce.start_utc) AS next_start_utc,
+      SUBSTRING_INDEX(GROUP_CONCAT(COALESCE(ce.title,'') ORDER BY ce.start_utc ASC SEPARATOR '||'), '||', 1) AS next_title
+    FROM profiles p
+    JOIN user_calendars uc ON uc.user_id = p.user_id AND uc.is_default = 1
+    JOIN calendar_events ce ON ce.calendar_id = uc.id
+    LEFT JOIN zipcodes z ON z.zip = p.zip
+    WHERE p.is_active = 1
+      AND ce.status = 'busy'
+      AND ce.start_utc >= :start_utc
+      AND ce.start_utc < :end_utc
+    GROUP BY p.id
+    ORDER BY RAND()
+    LIMIT 24
+  ";
+	$stmt = $pdo->prepare($sql);
+	$stmt->execute([
+			':start_utc' => $nowUtc->format('Y-m-d H:i:s'),
+			':end_utc' => $endUtc->format('Y-m-d H:i:s'),
+	]);
+	$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+	foreach ($rows as $r) {
+		if (($r['profile_type'] ?? '') === 'venue') {
+			$flavor_venues[] = $r;
+		} else {
+			// Default: treat everything else as "band" for public discovery.
+			$flavor_bands[] = $r;
+		}
+	}
+
+	$flavor_bands = array_slice($flavor_bands, 0, 8);
+	$flavor_venues = array_slice($flavor_venues, 0, 8);
+
+} catch (Throwable $e) {
+	// Homepage should still render even if DB isn't connected yet.
+	$flavor_error = $e->getMessage();
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -109,6 +171,19 @@ if ($where !== '' || $q !== '' || $when !== '') {
     .p-bookings{background-image: radial-gradient(1200px 600px at 70% 20%, rgba(236,72,153,.35), transparent 55%), radial-gradient(900px 500px at 25% 75%, rgba(245,158,11,.25), transparent 55%), linear-gradient(135deg, #120510, #05060a);}
     .p-cal{background-image: radial-gradient(1200px 600px at 30% 15%, rgba(59,130,246,.40), transparent 55%), radial-gradient(900px 500px at 75% 80%, rgba(139,92,246,.30), transparent 55%), linear-gradient(135deg, #071226, #05060a);}
     .p-tools{background-image: radial-gradient(1200px 600px at 60% 10%, rgba(34,197,94,.25), transparent 55%), radial-gradient(900px 500px at 20% 80%, rgba(148,163,184,.20), transparent 55%), linear-gradient(135deg, #081018, #05060a);}
+
+    /* Flavor feed */
+    .flavor-wrap{width:min(1100px, calc(100% - 32px)); margin: 0 auto; padding: 18px 0 10px;}
+    .flavor-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:10px;}
+    .flavor-head h3{margin:0;font-size: 16px;letter-spacing:-0.01em;}
+    .flavor-head .muted{opacity:.75;font-size:13px;}
+    .flavor-rail{display:flex;gap:12px;overflow:auto;padding:12px 2px 18px;scroll-snap-type:x mandatory;}
+    .flavor-card{min-width: 280px; max-width: 320px; scroll-snap-align:start; background: rgba(10,10,10,0.55); border:1px solid rgba(255,255,255,0.10); border-radius: 18px; padding: 14px;}
+    .flavor-card .name{font-weight:700;letter-spacing:-0.01em;}
+    .flavor-card .meta{opacity:.82;font-size:13px;margin-top:6px;line-height:1.35;}
+    .flavor-card .tag{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,0.14);border-radius:999px;padding:6px 10px;font-size:12px;opacity:.9;margin-top:10px;}
+    .flavor-card a{color:inherit;text-decoration:none;}
+    .flavor-card:hover{border-color: rgba(124,58,237,0.55);}
   </style>
 
 </head>
@@ -174,9 +249,78 @@ if ($where !== '' || $q !== '' || $when !== '') {
       <div class="hero-hints">
         <a href="<?= h(BASE_URL) ?>/pricing.php">Calendar tools</a>
         <a href="<?= h(BASE_URL) ?>/public_availability.php">Share availability</a>
+        <a href="<?= h(BASE_URL) ?>/listings.php">This week</a>
         <a href="<?= h(BASE_URL) ?>/login.php">Try Ops</a>
       </div>
     </section>
+
+    <?php
+      $tzLocal = new DateTimeZone('America/Chicago');
+      $fmtDay = function($utc) use ($tzLocal) {
+        if (!$utc) return '';
+        try {
+          $dt = new DateTimeImmutable((string)$utc, new DateTimeZone('UTC'));
+          $dt = $dt->setTimezone($tzLocal);
+          return $dt->format('D, M j');
+        } catch (Throwable $e) { return ''; }
+      };
+    ?>
+
+    <?php if (!empty($flavor_bands) || !empty($flavor_venues)): ?>
+      <section class="flavor-wrap" aria-label="This week">
+        <div class="flavor-head">
+          <div>
+            <h3>What’s happening this week</h3>
+            <div class="muted">A quick peek from public calendars (no duplicates)</div>
+          </div>
+          <div>
+            <a class="pill" href="<?= h(BASE_URL) ?>/listings.php">View the full week →</a>
+          </div>
+        </div>
+
+        <?php if (!empty($flavor_bands)): ?>
+          <div class="flavor-head" style="margin-top:14px;">
+            <h3>Bands</h3>
+            <div class="muted"><?= count($flavor_bands) ?> picks</div>
+          </div>
+          <div class="flavor-rail" role="list">
+            <?php foreach ($flavor_bands as $it): ?>
+              <div class="flavor-card" role="listitem">
+                <a href="<?= h(BASE_URL) ?>/profile.php?id=<?= (int)$it['profile_id'] ?>">
+                  <div class="name"><?= h($it['name'] ?? '') ?></div>
+                  <div class="meta">
+                    <div><b><?= h($fmtDay($it['next_start_utc'] ?? null)) ?></b> • <?= h($it['next_title'] ?? 'Show') ?></div>
+                    <div><?= h(trim(($it['city'] ?? '') . ", " . ($it['state'] ?? '') . " " . ($it['zip'] ?? ''))) ?></div>
+                  </div>
+                  <div class="tag">View profile →</div>
+                </a>
+              </div>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+
+        <?php if (!empty($flavor_venues)): ?>
+          <div class="flavor-head" style="margin-top:4px;">
+            <h3>Venues</h3>
+            <div class="muted"><?= count($flavor_venues) ?> picks</div>
+          </div>
+          <div class="flavor-rail" role="list">
+            <?php foreach ($flavor_venues as $it): ?>
+              <div class="flavor-card" role="listitem">
+                <a href="<?= h(BASE_URL) ?>/profile.php?id=<?= (int)$it['profile_id'] ?>">
+                  <div class="name"><?= h($it['name'] ?? '') ?></div>
+                  <div class="meta">
+                    <div><b><?= h($fmtDay($it['next_start_utc'] ?? null)) ?></b> • <?= h($it['next_title'] ?? 'Show') ?></div>
+                    <div><?= h(trim(($it['city'] ?? '') . ", " . ($it['state'] ?? '') . " " . ($it['zip'] ?? ''))) ?></div>
+                  </div>
+                  <div class="tag">View profile →</div>
+                </a>
+              </div>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+      </section>
+    <?php endif; ?>
 
     
     <!-- Scroll story: what Ready Set Shows does -->
