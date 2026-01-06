@@ -130,19 +130,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 <div class="public-shell">
-	<header class="public-header">
-		<a class="public-brand" href="<?= h2(BASE_URL) ?>/index.php">Ready Set Shows</a>
-		<nav class="public-nav">
-			<a href="<?= h2(BASE_URL) ?>/search.php">Search</a>
-			<a href="<?= h2(BASE_URL) ?>/listings.php">This Week</a>
-			<?php if ($user): ?>
-				<a href="<?= h2(BASE_URL) ?>/dashboard.php">Dashboard</a>
-			<?php else: ?>
-				<a href="<?= h2(BASE_URL) ?>/login.php">Login</a>
-			<?php endif; ?>
-		</nav>
-	</header>
-
 	<main class="public-content" style="max-width: 880px; margin: 0 auto; padding: 1.25rem;">
 		<div class="card">
 			<div class="card-body">
