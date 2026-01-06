@@ -3,79 +3,102 @@ require_once __DIR__ . "/../core/bootstrap.php";
 $user = auth_user();
 
 function page_header(string $title): void {
-    $u = auth_user();
-    // Pages like login/forgot/reset can set $HIDE_NAV = true before including _layout.php
-    // to render a minimal shell without the top navigation.
-    $hideNav = !empty($GLOBALS['HIDE_NAV']);
-
-    // Single-source nav model (desktop dropdown + mobile accordion)
-    $dbItems = [
-   		['Overview', '/dashboard.php', 'overview'],
-   		['Calendars', '/manage_calendars.php', 'tools'],
-   		['Metrics', '/metrics.php', 'admin'],
-    ];
-
-    $bookingItems = [
-    		['Pipeline', '/bookings.php', 'booking'],
-    		['Inquiries', '/bookings.php?tab=inquiries', 'booking'],
-    		['Pending', '/bookings.php?tab=pending', 'booking'],
-    		['Confirmed', '/bookings.php?tab=confirmed', 'booking'],
-    ];
-    
-    $toolsItems = [
-    		['Bands in Town', '/tools.php', 'tools'],
-    		['Check Availability', '/check_availability.php', 'tools'],
-    		['Pretty Print', '/print.php', 'tools'],
-    		['Social Help', '/social.php', 'tools'],
-    		['Other Tools', '/tools.php', 'tools'],
-    ];
-    
-    
-    $profilesItems = [
-    		['My Profiles', '/profiles.php', 'profile'],
-    		['Create Profile', '/profiles.php?new=1', 'profile'],
-    		['Settings', '/settings.php', 'profile'],
-    ];
-    
-    // Only admins/super users see Metrics.
-    if (function_exists('is_admin_user') && is_admin_user($u)) {
-        $opsItems[] = ['Metrics', '/metrics.php', 'stats'];
-    }
-
-    $NAV = [
-        'Dashboard' => $dbItems,
-   		'Bookings' => $bookingItems,
-        'Tools' => $toolsItems,
-        'Profiles' => $profilesItems,
-    ];
-
-    // Active route → highlight module + sub-item (desktop two-row nav)
-    $path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '';
-    $file = strtolower(basename($path));
-    $activeModule = 'Ops';
-    $activeItemPath = '';
-    foreach ($NAV as $m => $items) {
-        foreach ($items as $it) {
-            $p = strtolower(basename($it[1] ?? ''));
-            if ($p && $p === $file) {
-                $activeModule = $m;
-                $activeItemPath = $it[1];
-                break 2;
-            }
-        }
-    }
-
-    // Metrics: capture page views early so dashboards have real history.
-    // Safe by design (track_event swallows DB/table errors).
-    if (function_exists('track_event')) {
-        track_event('page_view', [
-            'title' => $title,
-            'module' => $activeModule,
-            'file' => $file,
-            'hide_nav' => $hideNav ? 1 : 0,
-        ], $u['id'] ?? null);
-    }
-    ?>
+	$u = auth_user();
+	// Pages like login/forgot/reset can set $HIDE_NAV = true before including _layout.php
+	// to render a minimal shell without the top navigation.
+	$hideNav = !empty($GLOBALS['HIDE_NAV']);
+	
+	// Single-source nav model (desktop dropdown + mobile accordion)
+	$dbItems = [
+			['Overview', '/dashboard.php', 'overview'],
+			['Calendars', '/manage_calendars.php', 'tools'],
+			['Metrics', '/metrics.php', 'admin'],
+	];
+	
+	$bookingItems = [
+			['Pipeline', '/bookings.php', 'booking'],
+			['Inquiries', '/bookings.php?tab=inquiries', 'booking'],
+			['Pending', '/bookings.php?tab=pending', 'booking'],
+			['Confirmed', '/bookings.php?tab=confirmed', 'booking'],
+	];
+	
+	$toolsItems = [
+			['Bands in Town', '/tools.php', 'tools'],
+			['Check Availability', '/check_availability.php', 'tools'],
+			['Pretty Print', '/print.php', 'tools'],
+			['Social Help', '/social.php', 'tools'],
+			['Other Tools', '/tools.php', 'tools'],
+	];
+	
+	
+	$profilesItems = [
+			['My Profiles', '/profiles.php', 'profile'],
+			['Create Profile', '/profiles.php?new=1', 'profile'],
+			['Settings', '/settings.php', 'profile'],
+	];
+	
+	// Only admins/super users see Metrics.
+	if (function_exists('is_admin_user') && is_admin_user($u)) {
+		$opsItems[] = ['Metrics', '/metrics.php', 'stats'];
+	}
+	
+	$NAV = [
+			'Dashboard' => $dbItems,
+			'Bookings' => $bookingItems,
+			'Tools' => $toolsItems,
+			'Profiles' => $profilesItems,
+	];
+	
+	// Active route → highlight module + sub-item (desktop two-row nav)
+	// Query-aware: /bookings.php?tab=pending should highlight "Pending" instead of "Pipeline".
+	$reqUri = (string)($_SERVER['REQUEST_URI'] ?? '');
+	$reqPath = parse_url($reqUri, PHP_URL_PATH) ?: '';
+	$reqQuery = (string)(parse_url($reqUri, PHP_URL_QUERY) ?? '');
+	$file = strtolower(basename($reqPath));
+	
+	$activeModule = 'Ops';
+	$activeItemPath = '';
+	
+	// Pass 1: exact match (path + query) when nav item includes a query.
+	foreach ($NAV as $m => $items) {
+		foreach ($items as $it) {
+			$nav = (string)($it[1] ?? '');
+			if ($nav === '#' || $nav === '') continue;
+			$navPath = parse_url($nav, PHP_URL_PATH) ?: '';
+			$navQuery = (string)(parse_url($nav, PHP_URL_QUERY) ?? '');
+			if ($navQuery !== '' && strtolower(basename($navPath)) === $file && $navQuery === $reqQuery) {
+				$activeModule = $m;
+				$activeItemPath = $nav;
+				break 2;
+			}
+		}
+	}
+	
+	// Pass 2: fallback match by filename only (keeps existing behavior for most pages).
+	if ($activeItemPath === '') {
+		foreach ($NAV as $m => $items) {
+			foreach ($items as $it) {
+				$p = strtolower(basename((string)($it[1] ?? '')));
+				if ($p && $p === $file) {
+					$activeModule = $m;
+					$activeItemPath = (string)$it[1];
+					break 2;
+				}
+			}
+		}
+	}
+	
+	// Metrics: capture page views early so dashboards have real history.
+	// Safe by design (track_event swallows DB/table errors).
+	if (function_exists('track_event')) {
+		track_event('page_view', [
+				'title' => $title,
+				'module' => $activeModule,
+				'file' => $file,
+				'hide_nav' => $hideNav ? 1 : 0,
+		], $u['id'] ?? null);
+	}
+	?>
     <!doctype html>
     <html lang="en">
     <head>
@@ -84,6 +107,17 @@ function page_header(string $title): void {
         <meta name="csrf" content="<?= h(csrf_token()) ?>"/>
         <title><?= h($title) ?> • <?= h(APP_NAME) ?></title>
         <link rel="stylesheet" href="<?= h(BASE_URL) ?>/assets/css/app.css"/>
+        <style>
+          /* Keep Bookings/Tools/Profiles subnav visible while scrolling. */
+          .topbar-row--sub{
+            position: sticky;
+            top: 0;
+            z-index: 60;
+            background: rgba(245,246,250,0.98);
+            backdrop-filter: blur(6px);
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+          }
+        </style>
         <script>const BASE_URL = <?= json_encode(BASE_URL) ?>;</script>
         <!-- Alpine.js (used for modal-driven flows like ICS import on Manage Calendars) -->
         <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
@@ -140,7 +174,6 @@ function page_header(string $title): void {
 		    </nav>
 	     <?php endif; ?>
       </div>
-      
 
       <?php if (!$hideNav): ?>
       <!-- Row 2: emblem + main modules + user/logout -->
