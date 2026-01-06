@@ -195,17 +195,11 @@ $title = $profile ? ($profile['name'] ?? 'Profile') : "Profile";
               <?php
                 $when = trim($_GET['when'] ?? '');
                 $where = trim($_GET['where'] ?? '');
-                $subject = rawurlencode("Booking inquiry: " . ($profile['name'] ?? ''));
-                $body = rawurlencode(
-                  "Hi!\n\nI'm interested in " . ($profile['profile_type'] ?? 'your') . " listing: " . ($profile['name'] ?? '') . ".\n\n"
-                  . "Date: " . ($when ?: "TBD") . "\n"
-                  . "Location: " . ($where ?: "TBD") . "\n\n"
-                  . "Thanks!"
-                );
               ?>
               <a class="pill" href="<?= h(BASE_URL) ?>/search.php?where=<?= rawurlencode($where ?: ($profile['zip'] ?? '')) ?>&radius=25&type=all">Search nearby</a>
-              <a class="pill" href="mailto:?subject=<?= $subject ?>&body=<?= $body ?>">Request booking</a>
-              <?php if (!empty($profile['website'])): ?>
+              <?php $t = ((($profile['profile_type'] ?? '') === 'venue') ? 'venue' : 'artist'); ?>
+              <a class="pill" href="<?= h(BASE_URL) ?>/request.php?target_profile_id=<?= (int)($profile['id'] ?? 0) ?>&target_type=<?= h($t) ?>">Request booking</a>
+<?php if (!empty($profile['website'])): ?>
                 <a class="pill" href="<?= h($profile['website']) ?>" target="_blank" rel="noopener">Website</a>
               <?php endif; ?>
             </div>

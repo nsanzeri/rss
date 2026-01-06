@@ -2,6 +2,20 @@
 $HIDE_NAV = false;
 require_once __DIR__ . "/_layout.php";
 
+// Casting request context (if user started a request and is now browsing)
+$casting = $_SESSION['booking_request_draft'] ?? null;
+$castingType = null;          // 'artist' | 'venue'
+$castingProfileType = null;   // 'band' | 'venue'
+$castingShortlistCount = 0;
+$castingShortlistIds = [];
+if (is_array($casting)) {
+  $castingType = (($casting['target_type'] ?? 'artist') === 'venue') ? 'venue' : 'artist';
+  $castingProfileType = ($castingType === 'venue') ? 'venue' : 'band';
+  $short = $_SESSION['booking_shortlist'] ?? ['artist'=>[], 'venue'=>[]];
+  $castingShortlistIds = array_values(array_unique(array_map('intval', $short[$castingType] ?? [])));
+  $castingShortlistCount = (int)count($castingShortlistIds);
+}
+
 // Public search results page (Discovery v1)
 $q = trim($_GET['q'] ?? '');
 $where = trim($_GET['where'] ?? '');
@@ -263,6 +277,23 @@ $title = "Search — Ready Set Shows";
 </div>
       </div>
 
+      <?php if ($castingProfileType): ?>
+        <div class="card" style="margin-top: 12px;">
+          <div class="card-body" style="display:flex; gap:.75rem; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+            <div>
+              <strong>Casting request active</strong>
+              <div class="muted" style="margin-top:.15rem;">
+                You’re building a request for <?= $castingType==='venue' ? 'venues' : 'artists' ?>. Selected: <?= (int)$castingShortlistCount ?>.
+              </div>
+            </div>
+            <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+              <a class="pill" href="<?= h(BASE_URL) ?>/request_review.php">Review &amp; Send</a>
+              <a class="pill" href="<?= h(BASE_URL) ?>/request_browse.php?type=<?= h($castingType) ?>">Quick Browse</a>
+            </div>
+          </div>
+        </div>
+      <?php endif; ?>
+
       <?php if ($search_error): ?>
         <div class="alert" style="margin-top: 12px;"><?= $search_error ?></div>
       <?php endif; ?>
@@ -305,6 +336,23 @@ $title = "Search — Ready Set Shows";
                   <?php endif; ?>
                   <div class="listing-actions">
                     <a class="pill small" href="<?= h(BASE_URL) ?>/profile.php?id=<?= (int)$row['id'] ?>&where=<?= rawurlencode($where) ?>&when=<?= rawurlencode($when) ?>">View</a>
+                    <?php $t = ((($row['profile_type'] ?? '') === 'venue') ? 'venue' : 'artist'); ?>
+
+                    <?php if ($castingProfileType && (($row['profile_type'] ?? '') === $castingProfileType)):
+                      $pid = (int)$row['id'];
+                      $isAdded = in_array($pid, $castingShortlistIds, true);
+                    ?>
+                      <form method="post" action="<?= h(BASE_URL) ?>/request_shortlist_toggle.php" style="display:inline; margin:0;">
+                        <input type="hidden" name="csrf" value="<?= h(csrf_token()) ?>" />
+                        <input type="hidden" name="type" value="<?= h($castingType) ?>" />
+                        <input type="hidden" name="profile_id" value="<?= (int)$pid ?>" />
+                        <input type="hidden" name="action" value="<?= $isAdded ? 'remove' : 'add' ?>" />
+                        <input type="hidden" name="return" value="<?= h($_SERVER['REQUEST_URI'] ?? (BASE_URL . '/search.php')) ?>" />
+                        <button class="pill small" type="submit"><?= $isAdded ? 'Remove' : 'Add' ?></button>
+                      </form>
+                    <?php else: ?>
+                      <a class="pill small" href="<?= h(BASE_URL) ?>/request.php?target_profile_id=<?= (int)$row['id'] ?>&target_type=<?= h($t) ?>">Request</a>
+                    <?php endif; ?>
                     <?php if (!empty($row['website'])): ?>
                       <a class="pill small" href="<?= h((string)$row['website']) ?>" target="_blank" rel="noopener">Website</a>
                     <?php endif; ?>
