@@ -16,10 +16,10 @@ function page_header(string $title): void {
 	];
 	
 	$bookingItems = [
-			['Pipeline', '/bookings.php', 'booking'],
-			['Inquiries', '/bookings.php?tab=inquiries', 'booking'],
-			['Pending', '/bookings.php?tab=pending', 'booking'],
-			['Confirmed', '/bookings.php?tab=confirmed', 'booking'],
+			['Pipeline', '/inbox.php', 'booking'],
+			['Inquiries', '/inbox.php?tab=inquiries', 'booking'],
+			['Pending', '/inbox.php?tab=pending', 'booking'],
+			['Confirmed', '/inbox.php?tab=confirmed', 'booking'],
 	];
 	
 	$toolsItems = [
@@ -44,13 +44,13 @@ function page_header(string $title): void {
 	
 	$NAV = [
 			'Dashboard' => $dbItems,
-			'Bookings' => $bookingItems,
+			'Inbox' => $bookingItems,
 			'Tools' => $toolsItems,
 			'Profiles' => $profilesItems,
 	];
 	
 	// Active route → highlight module + sub-item (desktop two-row nav)
-	// Query-aware: /bookings.php?tab=pending should highlight "Pending" instead of "Pipeline".
+	// Query-aware: /inbox.php?tab=pending should highlight "Pending" instead of "Pipeline".
 	$reqUri = (string)($_SERVER['REQUEST_URI'] ?? '');
 	$reqPath = parse_url($reqUri, PHP_URL_PATH) ?: '';
 	$reqQuery = (string)(parse_url($reqUri, PHP_URL_QUERY) ?? '');
@@ -108,7 +108,7 @@ function page_header(string $title): void {
         <title><?= h($title) ?> • <?= h(APP_NAME) ?></title>
         <link rel="stylesheet" href="<?= h(BASE_URL) ?>/assets/css/app.css"/>
         <style>
-          /* Keep Bookings/Tools/Profiles subnav visible while scrolling. */
+          /* Keep Inbox/Tools/Profiles subnav visible while scrolling. */
           .topbar-row--sub{
             position: sticky;
             top: 0;

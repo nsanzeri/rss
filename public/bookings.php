@@ -3,7 +3,7 @@ require_once __DIR__ . "/_layout.php";
 $u = require_login();
 
 $tab = $_GET['tab'] ?? 'pipeline';
-$allowed = ['pipeline','requests','inquiries','pending','confirmed'];
+$allowed = ['pipeline','inquiries','pending','confirmed'];
 if (!in_array($tab, $allowed, true)) $tab = 'pipeline';
 
 $pdo = db();
@@ -16,10 +16,6 @@ function booking_status_label(string $s): string {
 		'pending' => 'Pending',
 		'confirmed' => 'Confirmed',
 		'canceled' => 'Canceled',
-		'accepted' => 'Accepted',
-		'declined' => 'Declined',
-		'expired' => 'Expired',
-		'cancelled' => 'Cancelled',
 		default => ucfirst($s),
 	};
 }
@@ -42,101 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	try {
 		csrf_validate($_POST['csrf'] ?? '');
 		
-		
-		// Respond to incoming booking invite (recipient-side)
-		if ($action === 'respond_invite') {
-			$invite_id = (int)($_POST['invite_id'] ?? 0);
-			$decision = $_POST['decision'] ?? '';
-			if ($invite_id <= 0) throw new Exception("Missing invite id.");
-			if (!in_array($decision, ['accepted','declined'], true)) throw new Exception("Invalid decision.");
-			
-			$pdo->beginTransaction();
-			try {
-				// ownership check: invite must target one of my profiles
-				$stmt = $pdo->prepare("
-					SELECT i.*, r.event_title, r.event_date, r.start_time, r.end_time,
-					       r.venue_name, r.venue_address, r.city, r.state, r.zip,
-					       r.contact_name, r.contact_email, r.contact_phone, r.notes,
-					       r.budget_max
-					FROM booking_invites i
-					JOIN booking_requests r ON r.id = i.request_id
-					JOIN profiles p ON p.id = i.target_profile_id
-					WHERE i.id = ? AND p.user_id = ? AND p.deleted_at IS NULL
-					LIMIT 1
-				");
-				$stmt->execute([$invite_id, $u['id']]);
-				$inv = $stmt->fetch();
-				if (!$inv) throw new Exception("Invite not found.");
-				
-				// update invite status
-				$upd = $pdo->prepare("UPDATE booking_invites SET status=?, responded_at=NOW() WHERE id=? LIMIT 1");
-				$upd->execute([$decision, $invite_id]);
-				
-				// If accepted, create a booking (idempotent-ish)
-				if ($decision === 'accepted') {
-					// avoid duplicates: same user/profile/date/title/contact
-					$chk = $pdo->prepare("
-						SELECT id FROM bookings
-						WHERE user_id=? AND profile_id <=> ? AND deleted_at IS NULL
-						  AND COALESCE(event_date,'0000-00-00') <=> COALESCE(?, '0000-00-00')
-						  AND event_title = ?
-						  AND COALESCE(contact_email,'') = COALESCE(?, '')
-						LIMIT 1
-					");
-					$chk->execute([
-							$u['id'],
-							$inv['target_profile_id'],
-							$inv['event_date'] ?? null,
-							$inv['event_title'] ?? 'Booking Request',
-							$inv['contact_email'] ?? null,
-					]);
-					$existingId = (int)($chk->fetchColumn() ?: 0);
-					
-					if ($existingId <= 0) {
-						$ins = $pdo->prepare("
-							INSERT INTO bookings
-							(user_id, profile_id, status, event_title, event_date, start_time, end_time,
-							 venue_name, venue_address, city, state, zip,
-							 contact_name, contact_email, contact_phone, fee, notes)
-							VALUES
-							(:uid, :pid, 'pending', :title, :edate, :st, :et,
-							 :vname, :vaddr, :city, :state, :zip,
-							 :cname, :cemail, :cphone, :fee, :notes)
-						");
-						$notes = trim(
-								"From booking request #" . (int)$inv['request_id'] . "\n" .
-								((string)($inv['notes'] ?? ''))
-								);
-						$ins->execute([
-								':uid' => $u['id'],
-								':pid' => $inv['target_profile_id'],
-								':title' => $inv['event_title'] ?? 'Booking Request',
-								':edate' => $inv['event_date'] ?? null,
-								':st' => $inv['start_time'] ?? null,
-								':et' => $inv['end_time'] ?? null,
-								':vname' => $inv['venue_name'] ?? null,
-								':vaddr' => $inv['venue_address'] ?? null,
-								':city' => $inv['city'] ?? null,
-								':state' => $inv['state'] ?? null,
-								':zip' => $inv['zip'] ?? null,
-								':cname' => $inv['contact_name'] ?? null,
-								':cemail' => $inv['contact_email'] ?? null,
-								':cphone' => $inv['contact_phone'] ?? null,
-								':fee' => $inv['budget_max'] ?? null,
-								':notes' => $notes ?: null,
-						]);
-					}
-				}
-				
-				$pdo->commit();
-				$flash = ($decision === 'accepted') ? 'Invite accepted.' : 'Invite declined.';
-			} catch (Throwable $e) {
-				$pdo->rollBack();
-				throw $e;
-			}
-		}
-		
 		if ($action === 'create_booking') {
+			$invite_id = (int)($_POST['invite_id'] ?? 0); // optional: convert an incoming invite into a booking
 			$status = post_str('status') ?: normalize_status_for_tab($tab);
 			$event_title = post_str('event_title');
 			if ($event_title === '') throw new Exception("Event title is required.");
@@ -181,7 +84,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 					':notes' => post_str('notes') ?: null,
 			]);
 			
-			$flash = "Booking created.";
+			// If this booking was created from an incoming invite, mark that invite as accepted.
+			if ($invite_id > 0) {
+				$st2 = $pdo->prepare(
+						"UPDATE booking_invites i\n".
+						"JOIN profiles p ON p.id = i.target_profile_id\n".
+						"SET i.status='accepted', i.responded_at=NOW()\n".
+						"WHERE i.id = :iid AND p.user_id = :uid"
+						);
+				$st2->execute([':iid' => $invite_id, ':uid' => $u['id']]);
+			}
+			
+			$flash = ($invite_id > 0) ? "Quote saved (invite accepted)." : "Booking created.";
 		}
 		
 		if ($action === 'update_booking') {
@@ -275,97 +189,95 @@ try {
 }
 
 // which bookings to fetch
-$where = "b.user_id = :uid AND b.deleted_at IS NULL";
-$params = [':uid' => $u['id']];
-
-if ($tab === 'inquiries') {
-	$where .= " AND b.status = 'inquiry'";
-} elseif ($tab === 'pending') {
-	$where .= " AND b.status = 'pending'";
-} elseif ($tab === 'confirmed') {
-	$where .= " AND b.status = 'confirmed'";
-}
-
 $rows = [];
 try {
-	if ($tab === 'requests') {
-		// Incoming booking requests (invites targeting any of my profiles)
+	if (in_array($tab, ['pipeline','requests'], true)) {
+		// Pipeline / incoming requests: invites targeting any of my profiles
 		$stmt = $pdo->prepare("
-      SELECT
-        i.id AS invite_id,
-        i.request_id,
-        i.status,
-        i.sent_at AS created_at,
-        p.name AS profile_name,
-        r.event_title,
-        r.event_date,
-        r.start_time,
-        r.end_time,
-        r.venue_name,
-        r.venue_address,
-        r.city,
-        r.state,
-        r.zip,
-        r.contact_name,
-        r.contact_email,
-        r.contact_phone,
-        r.budget_max AS fee,
-        CONCAT_WS('\n', r.notes, i.message) AS notes
-      FROM booking_invites i
-      JOIN booking_requests r ON r.id = i.request_id
-      JOIN profiles p ON p.id = i.target_profile_id
-      WHERE p.user_id = :uid
-        AND p.deleted_at IS NULL
-        AND r.status = 'open'
-      ORDER BY
-        CASE i.status
-          WHEN 'pending' THEN 1
-          WHEN 'accepted' THEN 2
-          WHEN 'declined' THEN 3
-          WHEN 'expired' THEN 4
-          WHEN 'cancelled' THEN 5
-          ELSE 9
-        END,
-        COALESCE(r.event_date, '2099-12-31') ASC,
-        i.sent_at DESC
-    ");
-/* 		echo '<pre>';
-		$stmt->debugDumpParams();
-		echo '</pre>'; */
+          SELECT
+            i.id AS invite_id,
+            i.request_id,
+            i.status,
+            i.target_type,
+            i.sent_at AS created_at,
+            i.responded_at,
+            p.id   AS profile_id,
+            p.name AS profile_name,
+            r.event_title,
+            r.event_date,
+            r.start_time,
+            r.end_time,
+            r.venue_name,
+            r.venue_address,
+            r.city,
+            r.state,
+            r.zip,
+            r.contact_name,
+            r.contact_email,
+            r.contact_phone,
+            r.budget_min,
+            r.budget_max,
+            CONCAT_WS('\n', r.notes, i.message) AS notes
+          FROM booking_invites i
+          JOIN booking_requests r ON r.id = i.request_id
+          JOIN profiles p ON p.id = i.target_profile_id
+          WHERE p.user_id = :uid
+            AND p.deleted_at IS NULL
+            AND r.status = 'open'
+          ORDER BY
+            CASE i.status
+              WHEN 'pending' THEN 1
+              WHEN 'accepted' THEN 2
+              WHEN 'declined' THEN 3
+              WHEN 'expired' THEN 4
+              WHEN 'cancelled' THEN 5
+              ELSE 9
+            END,
+            COALESCE(r.event_date, '2099-12-31') ASC,
+            i.sent_at DESC
+        ");
 		$stmt->execute([':uid' => $u['id']]);
 		$rows = $stmt->fetchAll() ?: [];
 	} else {
+		// Legacy/manual bookings (once you start converting accepted requests into bookings)
+		$where = "b.user_id = :uid AND b.deleted_at IS NULL";
+		$params = [':uid' => $u['id']];
+		
+		if ($tab === 'inquiries') {
+			$where .= " AND b.status = 'inquiry'";
+		} elseif ($tab === 'pending') {
+			$where .= " AND b.status = 'pending'";
+		} elseif ($tab === 'confirmed') {
+			$where .= " AND b.status = 'confirmed'";
+		}
+		
 		$stmt = $pdo->prepare("
-      SELECT b.*, p.name AS profile_name
-      FROM bookings b
-      LEFT JOIN profiles p ON p.id = b.profile_id
-      WHERE $where
-      ORDER BY
-        CASE b.status
-          WHEN 'inquiry' THEN 1
-          WHEN 'pending' THEN 2
-          WHEN 'confirmed' THEN 3
-          WHEN 'canceled' THEN 4
-          ELSE 9
-        END,
-        COALESCE(b.event_date, '2099-12-31') ASC,
-        b.created_at DESC
-    ");
-/* 		echo '<pre>';
-		$stmt->debugDumpParams();
-		echo '</pre>'; */
+          SELECT b.*, p.name AS profile_name
+          FROM bookings b
+          LEFT JOIN profiles p ON p.id = b.profile_id
+          WHERE $where
+          ORDER BY
+            CASE b.status
+              WHEN 'inquiry' THEN 1
+              WHEN 'pending' THEN 2
+              WHEN 'confirmed' THEN 3
+              WHEN 'canceled' THEN 4
+              ELSE 9
+            END,
+            COALESCE(b.event_date, '2099-12-31') ASC,
+            b.created_at DESC
+        ");
 		$stmt->execute($params);
 		$rows = $stmt->fetchAll() ?: [];
 	}
 } catch (Throwable $e) {
 	$rows = [];
-	if (!$error) {
-		$error = $e->getMessage();
-		//    $error = "Bookings table not found yet. Run scripts/create_bookings_and_profiles.sql in your DB, then refresh.";
-	}
+	if (!$error) $error = $e->getMessage();
 }
 
-$editId = ($tab === 'requests') ? 0 : (int)($_GET['edit'] ?? 0);
+// Editing is only for manual bookings
+$editId = (in_array($tab, ['pipeline','requests'], true)) ? 0 : (int)($_GET['edit'] ?? 0);
+$quoteInviteId = (in_array($tab, ['pipeline','requests'], true)) ? (int)($_GET['quote'] ?? 0) : 0;
 $editing = null;
 if ($editId > 0) {
 	foreach ($rows as $r) {
@@ -373,7 +285,68 @@ if ($editId > 0) {
 	}
 }
 
-$showNew = ($tab === 'requests') ? false : !empty($_GET['new']);
+// "Send quote" flow: prefill a NEW booking from a pipeline invite.
+$quotePrefill = null;
+if ($quoteInviteId > 0) {
+	try {
+		$st = $pdo->prepare(
+				"SELECT
+			  i.id AS invite_id,
+			  i.status AS invite_status,
+			  p.id AS profile_id,
+			  p.name AS profile_name,
+			  r.event_title,
+			  r.event_date,
+			  r.start_time,
+			  r.end_time,
+			  r.venue_name,
+			  r.venue_address,
+			  r.city,
+			  r.state,
+			  r.zip,
+			  r.contact_name,
+			  r.contact_email,
+			  r.contact_phone,
+			  r.budget_max,
+			  CONCAT_WS('\\n', r.notes, i.message) AS notes
+			FROM booking_invites i
+			JOIN booking_requests r ON r.id = i.request_id
+			JOIN profiles p ON p.id = i.target_profile_id
+			WHERE i.id = :iid AND p.user_id = :uid AND p.deleted_at IS NULL
+			LIMIT 1"
+				);
+		$st->execute([':iid' => $quoteInviteId, ':uid' => $u['id']]);
+		$row = $st->fetch();
+		if ($row) {
+			$quotePrefill = [
+					'invite_id' => (int)$row['invite_id'],
+					'profile_id' => (int)$row['profile_id'],
+					'profile_name' => $row['profile_name'],
+					'status' => 'pending',
+					'event_title' => $row['event_title'] ?: 'Booking request',
+					'event_date' => $row['event_date'] ?: '',
+					'start_time' => $row['start_time'] ?: '',
+					'end_time' => $row['end_time'] ?: '',
+					'venue_name' => $row['venue_name'] ?: '',
+					'venue_address' => $row['venue_address'] ?: '',
+					'city' => $row['city'] ?: '',
+					'state' => $row['state'] ?: '',
+					'zip' => $row['zip'] ?: '',
+					'contact_name' => $row['contact_name'] ?: '',
+					'contact_email' => $row['contact_email'] ?: '',
+					'contact_phone' => $row['contact_phone'] ?: '',
+					'fee' => ($row['budget_max'] !== null && $row['budget_max'] !== '') ? (string)$row['budget_max'] : '',
+					'deposit' => '',
+					'notes' => trim((string)$row['notes']),
+			];
+		}
+	} catch (Throwable $e) {
+		// ignore; user will see the standard error banner if needed
+		if (!$error) $error = $e->getMessage();
+	}
+}
+
+$showNew = (in_array($tab, ['pipeline','requests'], true)) ? ($quotePrefill !== null) : !empty($_GET['new']);
 
 page_header('Bookings');
 ?>
@@ -385,9 +358,7 @@ page_header('Bookings');
       <p class="muted" style="margin:0;">Track inquiries → pending → confirmed, with dates, contacts, and notes.</p>
     </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-      <?php if ($tab !== 'requests'): ?>
       <a class="dash-btn primary" href="<?= h(BASE_URL) ?>/bookings.php?tab=<?= h($tab) ?>&new=1">+ New booking</a>
-      <?php endif; ?>
     </div>
   </div>
 
@@ -400,7 +371,7 @@ page_header('Bookings');
 
   <?php if ($showNew || $editing): ?>
     <?php
-      $b = $editing ?: [
+	  $b = $editing ?: ($quotePrefill ?: [
         'id' => 0,
         'profile_id' => '',
         'status' => normalize_status_for_tab($tab),
@@ -418,8 +389,8 @@ page_header('Bookings');
         'contact_phone' => '',
         'fee' => '',
         'deposit' => '',
-        'notes' => '',
-      ];
+		'notes' => '',
+	  ]);
       $isEdit = $editing ? true : false;
     ?>
     <div class="card" style="margin-top:14px;">
@@ -435,6 +406,9 @@ page_header('Bookings');
           <?php if ($isEdit): ?>
             <input type="hidden" name="id" value="<?= (int)$b['id'] ?>"/>
           <?php endif; ?>
+		  <?php if (!$isEdit && !empty($b['invite_id'])): ?>
+			<input type="hidden" name="invite_id" value="<?= (int)$b['invite_id'] ?>"/>
+		  <?php endif; ?>
 
           <div class="form-grid">
             <div class="span-2">
@@ -580,7 +554,7 @@ page_header('Bookings');
                 <th style="text-align:left;">Date</th>
                 <th style="text-align:left;">Venue</th>
                 <th style="text-align:left;">Contact</th>
-                <th style="text-align:right;">Fee</th>
+                <th style="text-align:right;">Budget Max</th>
                 <th style="text-align:left;">Actions</th>
               </tr>
             </thead>
@@ -613,11 +587,23 @@ page_header('Bookings');
                   <?php endif; ?>
                 </td>
                 <td style="text-align:right;">
-                  <?= ($r['fee'] !== null && $r['fee'] !== '') ? '$' . number_format((float)$r['fee'], 2) : '—' ?>
+                  <?php
+                    // Pipeline/requests rows come from booking_requests and do not have 'fee'.
+                    $budgetMax = $r['budget_max'] ?? null;
+                    $fee = $r['fee'] ?? null;
+                    $val = ($budgetMax !== null && $budgetMax !== '') ? $budgetMax : $fee;
+                  ?>
+                  <?= ($val !== null && $val !== '') ? '$' . number_format((float)$val, 2) : '—' ?>
                 </td>
-                <td>
-                  <a class="pill" href="<?= h(BASE_URL) ?>/bookings.php?tab=<?= h($tab) ?>&edit=<?= (int)$r['id'] ?>">Edit</a>
-                </td>
+				<td>
+				  <?php if (!empty($r['invite_id'])): ?>
+					<a class="pill" href="<?= h(BASE_URL) ?>/bookings.php?tab=<?= h($tab) ?>&quote=<?= (int)$r['invite_id'] ?>">Send quote</a>
+				  <?php elseif (isset($r['id'])): ?>
+					<a class="pill" href="<?= h(BASE_URL) ?>/bookings.php?tab=<?= h($tab) ?>&edit=<?= (int)$r['id'] ?>">Edit</a>
+				  <?php else: ?>
+					<span class="muted">—</span>
+				  <?php endif; ?>
+				</td>
               </tr>
             <?php endforeach; ?>
             </tbody>
@@ -626,11 +612,7 @@ page_header('Bookings');
       <?php endif; ?>
 
       <div class="muted" style="margin-top:12px;font-size:12px;">
-        <?php if ($tab !== 'requests'): ?>
         Setup: if you haven’t yet, run <code>scripts/create_bookings_and_profiles.sql</code> in your DB.
-        <?php else: ?>
-        These requests come from <code>booking_requests</code> and <code>booking_invites</code>.
-        <?php endif; ?>
       </div>
     </div>
   </div>
