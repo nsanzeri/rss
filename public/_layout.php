@@ -2,12 +2,19 @@
 require_once __DIR__ . "/../core/bootstrap.php";
 $user = auth_user();
 
+
 function page_header(string $title): void {
 	$u = auth_user();
-	// Pages like login/forgot/reset can set $HIDE_NAV = true before including _layout.php
-	// to render a minimal shell without the top navigation.
 	$hideNav = !empty($GLOBALS['HIDE_NAV']);
 	
+	$pdo = function_exists('db') ? db() : null;
+	$mode = function_exists('app_mode') ? app_mode($u, $pdo) : 'guest';
+	
+	// Pages like login/forgot/reset can set $HIDE_NAV = true before including _layout.php
+	// to render a minimal shell without the top navigation.
+	// --------------------
+	// NAV definitions
+	// -------------------
 	// Single-source nav model (desktop dropdown + mobile accordion)
 	$dbItems = [
 			['Overview', '/dashboard.php', 'overview'],
@@ -42,12 +49,29 @@ function page_header(string $title): void {
 		$opsItems[] = ['Metrics', '/metrics.php', 'stats'];
 	}
 	
-	$NAV = [
+	$NAV_ARTIST = [
 			'Dashboard' => $dbItems,
 			'Inbox' => $bookingItems,
 			'Tools' => $toolsItems,
 			'Profiles' => $profilesItems,
 	];
+	
+	$NAV_HOST = [
+			'Discover' => [
+					['Browse', '/discover.php', 'discover'],
+					['Search', '/search.php', 'discover'],
+			],
+			'Requests' => [
+					['New Request', '/request.php', 'host'],
+					['My Requests', '/my_requests.php', 'host'],
+			],
+			'Account' => [
+					['Settings', '/settings.php', 'profile'],
+			],
+	];
+	
+	// Choose nav based on mode (guest uses host-style nav if you ever show it while logged out)
+	$NAV = ($mode === 'artist') ? $NAV_ARTIST : $NAV_HOST;
 	
 	// Active route → highlight module + sub-item (desktop two-row nav)
 	// Query-aware: /inbox.php?tab=pending should highlight "Pending" instead of "Pipeline".
@@ -56,7 +80,7 @@ function page_header(string $title): void {
 	$reqQuery = (string)(parse_url($reqUri, PHP_URL_QUERY) ?? '');
 	$file = strtolower(basename($reqPath));
 	
-	$activeModule = 'Ops';
+	$activeModule = array_key_first($NAV) ?: 'Discover';
 	$activeItemPath = '';
 	
 	// Pass 1: exact match (path + query) when nav item includes a query.
@@ -251,7 +275,9 @@ function page_footer(): void {
         <footer class="footer">
             <div class="footer-inner">
                 <span>© <?= date('Y') ?> Ready Set Shows</span>
-                <span class="muted">Ops • v1</span>
+                <?php $u = auth_user(); $m = function_exists('app_mode') ? app_mode($u) : 'guest'; ?>
+				<span class="muted"><?= $m === 'artist' ? 'Artist • v1' : ($m === 'host' ? 'Host • v1' : 'v1') ?></span>
+
             </div>
         </footer>
   </div>

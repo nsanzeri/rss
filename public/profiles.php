@@ -39,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			]);
 			
 			$flash = "Profile created.";
+			app_mode_refresh($user, $pdo);
 			redirect("/profiles.php");
 		}
 		

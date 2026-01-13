@@ -148,3 +148,58 @@ function geo_bounding_box(float $lat, float $lng, int $radius_miles): array {
         'max_lng' => $lng + $lng_delta,
     ];
 }
+
+// ---------------------------------------------------------------------
+// Mode + Profile helpers
+// ---------------------------------------------------------------------
+
+/**
+ * Returns true if the user owns at least one active (not deleted) profile.
+ * Current schema used throughout the project: profiles.user_id
+ */
+function user_has_profiles(int $userId, ?PDO $pdo = null): bool {
+	$pdo = $pdo ?: (function_exists('db') ? db() : null);
+	if (!$pdo) return false;
+	
+	try {
+		$st = $pdo->prepare("SELECT 1 FROM profiles WHERE user_id = ? AND deleted_at IS NULL LIMIT 1");
+		$st->execute([$userId]);
+		return (bool)$st->fetchColumn();
+	} catch (Throwable $e) {
+		return false;
+	}
+}
+
+/**
+ * app_mode:
+ * - 'artist' => user has profiles
+ * - 'host'   => user has zero profiles
+ *
+ * Cached in session for speed; call app_mode_refresh() after profile create/delete.
+ */
+function app_mode(?array $u = null, ?PDO $pdo = null): string {
+	if (!$u) $u = auth_user();
+	if (!$u) return 'guest';
+	
+	if (!empty($_SESSION['app_mode'])) return (string)$_SESSION['app_mode'];
+	
+	$mode = user_has_profiles((int)$u['id'], $pdo) ? 'artist' : 'host';
+	$_SESSION['app_mode'] = $mode;
+	return $mode;
+}
+
+function app_mode_refresh(?array $u = null, ?PDO $pdo = null): string {
+	unset($_SESSION['app_mode']);
+	return app_mode($u, $pdo);
+}
+
+/**
+ * Use this right after successful login.
+ */
+function redirect_after_login(?array $u = null, ?PDO $pdo = null): void {
+	$u = $u ?: auth_user();
+	if (!$u) redirect("/login.php");
+	
+	$mode = app_mode($u, $pdo);
+	redirect($mode === 'artist' ? "/dashboard.php" : "/discover.php");
+}

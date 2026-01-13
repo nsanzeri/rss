@@ -17,8 +17,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_validate($_POST['csrf'] ?? null)) {
         $err = "Session expired. Please try again.";
     } else {
-        [$ok, $msg] = auth_login_password($_POST['email'] ?? '', $_POST['password'] ?? '');
-        if ($ok) redirect("/dashboard.php");
+    	[$ok, $msg] = auth_login_password($_POST['email'] ?? '', $_POST['password'] ?? '');
+    	if ($ok) {
+    		// Route based on whether the user owns any profiles
+    		redirect_after_login(auth_user(), function_exists('db') ? db() : null);
+    	}
         $err = $msg;
     }
 }

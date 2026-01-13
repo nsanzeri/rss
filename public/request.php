@@ -40,6 +40,7 @@ $draft = $_SESSION['booking_request_draft'] ?? [
 		'auto_fallback' => 0,
 		'requester_profile_id' => 0,
 		'requester_type' => $user ? 'user' : 'guest',
+		'requester_user_id' => $user ? (int)$user['id'] : null,
 		'target_type' => ($prefill_target_id > 0 ? $prefill_target_type : 'artist'),
 ];
 
@@ -75,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$draft['budget_max']  = post_str('budget_max');
 		$draft['notes']       = post_str('notes');
 		$draft['auto_fallback'] = isset($_POST['auto_fallback']) ? 1 : 0;
+		$draft['requester_user_id'] = $user ? (int)$user['id'] : null;
 		
 		if ($user) {
 			$draft['requester_type'] = post_str('requester_type') ?: 'user';
