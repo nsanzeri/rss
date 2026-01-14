@@ -8,7 +8,7 @@ $pdo  = db();
 // Use full app chrome when logged in; minimal shell when public.
 $HIDE_NAV = !$user;
 require_once __DIR__ . '/_layout.php';
-page_header('Create a booking request');
+
 
 function h2(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 function post_str(string $k): string { return trim((string)($_POST[$k] ?? '')); }
@@ -127,6 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$error = $e->getMessage();
 	}
 }
+page_header('Create a booking request');
 ?>
 
 <style>

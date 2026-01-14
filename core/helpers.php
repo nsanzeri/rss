@@ -153,22 +153,25 @@ function geo_bounding_box(float $lat, float $lng, int $radius_miles): array {
 // Mode + Profile helpers
 // ---------------------------------------------------------------------
 
-/**
- * Returns true if the user owns at least one active (not deleted) profile.
- * Current schema used throughout the project: profiles.user_id
- */
 function user_has_profiles(int $userId, ?PDO $pdo = null): bool {
-	$pdo = $pdo ?: (function_exists('db') ? db() : null);
-	if (!$pdo) return false;
-	
-	try {
-		$st = $pdo->prepare("SELECT 1 FROM profiles WHERE user_id = ? AND deleted_at IS NULL LIMIT 1");
-		$st->execute([$userId]);
-		return (bool)$st->fetchColumn();
-	} catch (Throwable $e) {
-		return false;
-	}
+  $pdo = $pdo ?: (function_exists('db') ? db() : null);
+  if (!$pdo) return false;
+
+  // Prefer join-table if it exists
+  try {
+    $st = $pdo->prepare("SELECT 1 FROM user_profiles WHERE user_id = ? LIMIT 1");
+    $st->execute([$userId]);
+    if ($st->fetchColumn()) return true;
+  } catch (Throwable $e) {
+    // ignore if table doesn't exist
+  }
+
+  // Fallback: profiles.user_id
+  $st = $pdo->prepare("SELECT 1 FROM profiles WHERE user_id = ? AND deleted_at IS NULL LIMIT 1");
+  $st->execute([$userId]);
+  return (bool)$st->fetchColumn();
 }
+
 
 /**
  * app_mode:
@@ -193,13 +196,24 @@ function app_mode_refresh(?array $u = null, ?PDO $pdo = null): string {
 	return app_mode($u, $pdo);
 }
 
-/**
- * Use this right after successful login.
- */
 function redirect_after_login(?array $u = null, ?PDO $pdo = null): void {
-	$u = $u ?: auth_user();
-	if (!$u) redirect("/login.php");
-	
-	$mode = app_mode($u, $pdo);
-	redirect($mode === 'artist' ? "/dashboard.php" : "/discover.php");
+  $u = $u ?: auth_user();
+  if (!$u) redirect("/login.php");
+
+  $pdo = $pdo ?: (function_exists('db') ? db() : null);
+  $mode = app_mode($u, $pdo);
+
+  // If your app stores an "intended URL", only use it if it matches mode.
+  $returnTo = $_SESSION['return_to'] ?? $_SESSION['redirect_to'] ?? null;
+  unset($_SESSION['return_to'], $_SESSION['redirect_to']);
+
+  if ($returnTo) {
+    // Host users should NOT be sent to artist-only pages.
+    $artistOnly = preg_match('#/(dashboard|inbox|bookings|profiles)\.php#', $returnTo);
+    if (!($mode === 'host' && $artistOnly)) {
+      redirect($returnTo);
+    }
+  }
+
+  redirect($mode === 'artist' ? "/dashboard.php" : "/discover.php");
 }
