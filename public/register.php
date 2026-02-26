@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $err = "Session expired. Please try again.";
     } else {
         [$ok, $msg] = auth_register_password($_POST['email'] ?? '', $_POST['password'] ?? '', $_POST['display_name'] ?? null);
-        if ($ok) redirect("/dashboard.php");
+        if ($ok) redirect("/index.php");
         $err = $msg;
     }
 }

@@ -123,4 +123,4 @@ $pdo->commit();
 
 $_SESSION['user_id'] = $userId;
 session_regenerate_id(true);
-redirect("/dashboard.php");
+redirect("/index.php");

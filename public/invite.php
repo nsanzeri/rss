@@ -168,7 +168,7 @@ if ($inv['budget_min'] !== null || $inv['budget_max'] !== null) {
 <body>
 <div class="public-shell">
   <div class="public-top">
-    <a class="public-brand" href="<?= h(BASE_URL) ?>/dashboard.php">Ready Set Shows</a>
+    <a class="public-brand" href="<?= h(BASE_URL) ?>/index.php">Ready Set Shows</a>
     <div class="public-actions"><a class="btn btn-ghost" href="<?= h(BASE_URL) ?>/bookings.php">Bookings</a></div>
   </div>
 

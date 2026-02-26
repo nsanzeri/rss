@@ -3,12 +3,32 @@ require_once __DIR__ . "/../core/bootstrap.php";
 
 $user = auth_user();
 
-// Phase 1: keep development convenient — authenticated users go straight to Ops.
+// Logged-in users should see a "member landing" version of this page.
 // Add ?stay=1 to preview the public landing while logged in.
-if ($user && empty($_GET['stay'])) {
-	header("Location: " . BASE_URL . "/dashboard.php");
-	exit;
+$member_view = ($user && empty($_GET['stay']));
+
+$mode = 'guest';
+$app_home = BASE_URL . "/login.php";
+$app_label = "Log In";
+
+if ($member_view) {
+	// Determine whether user is Host (no profiles) or Artist/Venue (has profiles)
+	try {
+		$pdo = db();
+		$mode = function_exists('app_mode') ? app_mode($user, $pdo) : 'host';
+	} catch (Throwable $e) {
+		$mode = 'host';
+	}
+	
+	if ($mode === 'artist') {
+		$app_home  = BASE_URL . "/dashboard.php";
+		$app_label = "Open Dashboard";
+	} else {
+		$app_home  = BASE_URL . "/discover.php";
+		$app_label = "Open Discover";
+	}
 }
+
 
 $q = trim($_GET['q'] ?? '');
 $where = trim($_GET['where'] ?? '');
@@ -200,8 +220,13 @@ try {
       <a href="<?= h(BASE_URL) ?>/pricing.php">Pricing</a>
       <span class="pill" style="opacity:.0; border-color:transparent;">&nbsp;</span>
       <a class="pill" href="#learn">Learn</a>
-      <a class="pill" href="<?= h(BASE_URL) ?>/login.php">Log In</a>
-      <a class="pill" href="<?= h(BASE_URL) ?>/register.php" style="background: rgba(124,58,237,0.22); border-color: rgba(124,58,237,0.42);">Sign Up</a>
+		<?php if ($member_view): ?>
+		  <a class="pill" href="<?= h($app_home) ?>"><?= h($app_label) ?></a>
+		  <a class="pill" href="<?= h(BASE_URL) ?>/logout.php">Log Out</a>
+		<?php else: ?>
+		  <a class="pill" href="<?= h(BASE_URL) ?>/login.php">Log In</a>
+		  <a class="pill" href="<?= h(BASE_URL) ?>/register.php" style="background: rgba(124,58,237,0.22); border-color: rgba(124,58,237,0.42);">Sign Up</a>
+		<?php endif; ?>
     </nav>
   </header>
 
@@ -374,7 +399,10 @@ try {
           <p>Link external calendars, import a date range, and add manual blocks. Edit and delete blocks right from the dashboard calendar widget.</p>
           <div class="cta-row">
             <a class="primary" href="<?= h(BASE_URL) ?>/manage_calendars.php">Manage calendars →</a>
-            <a href="<?= h(BASE_URL) ?>/dashboard.php">Open dashboard</a>
+            <a href="<?= h($member_view ? $app_home : (BASE_URL . "/login.php")) ?>">
+			  <?= $member_view ? h($app_label) : "Try Ops" ?>
+			</a>
+
           </div>
         </div>
         <div class="panel">
